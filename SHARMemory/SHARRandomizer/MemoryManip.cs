@@ -391,17 +391,6 @@ namespace SHARRandomizer
                     Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
                 }
             });
-            // _ = Task.Run(async () =>
-            // {
-            //     try
-            //     {
-            //         await MonitorMissionChanges(memory);
-            //     }
-            //     catch (Exception ex)
-            //     {
-            //         Common.WriteLog($"{ex}", "MonitorMissionChanges");
-            //     }
-            // });
         }
 
         bool CheckTicketRequirements(Memory memory, CharacterSheetManager characterSheet)
@@ -1903,7 +1892,7 @@ namespace SHARRandomizer
                 else
                 {
                     Common.WriteLog("Mission failed detected. Sending death link.", "MonitorDeathLinkTriggers");
-                    ac.SendDeathLink("Mission Failed");
+                    ac.SendDeathLink("Mission failed");
                 }
             }
 
@@ -2166,52 +2155,7 @@ namespace SHARRandomizer
             _deathLinkSuppressions = 2;
         }
 
-        private async Task MonitorMissionChanges(Memory memory)
-        {
-            while (!memory.Process.HasExited)
-            {
-                var gameplayManager = memory.Globals?.GameplayManager;
-
-                if (gameplayManager != null)
-                {
-                    var currentMission = gameplayManager.GetCurrentMission();
-
-                    if (currentMission == null)
-                    {
-                        MissionData.Add(new MissionDto
-                        {
-                            Name = "No Mission",
-                            State = "N/A",
-                            Stages = []
-                        });
-                    }
-                    else 
-                    {
-                        var latestMissionData = MissionData.OrderByDescending(m => m.Ticks).FirstOrDefault();
-
-                        if (!currentMission.Name.EndsWith("sd") && (latestMissionData == null || latestMissionData.Name != currentMission.Name || latestMissionData.State != currentMission.State.ToString()))
-                        {
-                            MissionData.Add(new MissionDto
-                            {
-                                Name = currentMission.Name,
-                                State = currentMission.State.ToString(),
-                                Stages = currentMission.MissionStages != null && currentMission.MissionStages.Count() > 0 
-                                    ? currentMission.MissionStages.Select(s => new StageDto
-                                    {
-                                        State = s.State.ToString(),
-                                        Name = s.Objective?.ObjectiveType.ToString() ?? "Unknown",
-                                    }).ToList()
-                                    : []
-                            });
-                        }
-                    }
-
-                    File.WriteAllText(@"C:\Users\garre\Documents\MissionLogs.txt", JsonSerializer.Serialize(MissionData.OrderByDescending(m => m.Ticks)));
-                    await Task.Delay(10000, Token);
-                }
-            }
-        }
-
+        
         private async Task MonitorDeathLinkTriggers(Memory memory)
         {
             while (!memory.Process.HasExited)
@@ -2293,26 +2237,12 @@ namespace SHARRandomizer
                     {
                         var currentStage = currentMission.GetCurrentStage();
 
-                        Common.WriteLog($"Begin update objective. Current fucking time " + currentStage.StageTime + "," + currentStage.Objective.ObjectiveType.ToString() + ", " + currentStage.StageTimeType.ToString(), "ProcessDeathLinkMessage");
-                        try 
+                        if (currentStage.Conditions != null && currentStage.Conditions.Any())
                         {
-                        
-                            // currentStage.Objective.ObjectiveType = MissionObjective.ObjectiveTypes.Timer;
-                            //currentStage.StageTime = 0;
-
-                            // currentStage.StageTimeType = MissionStage.StageTimeTypes.Set;
-                            
-                            currentStage.StageTime = 0;
-
-                            Common.WriteLog($"Done update objective. Current fucking time " + currentStage.StageTime + "," + currentStage.Objective.ObjectiveType.ToString() + ", " + currentStage.StageTimeType.ToString(), "ProcessDeathLinkMessage");
-                        }
-                        catch (Exception ex)
-                        {
-                            Common.WriteLog($"Failed to set mission timer to 0: {ex.Message}", "ProcessDeathLinkMessage");
+                            currentStage.Conditions[0].IsViolated = true;
+                            Common.WriteLog("Mission failed by death link.", "ProcessDeathLinkMessage");
                             return;
                         }
-
-                        return;
                     }
                 }
 
@@ -2327,43 +2257,23 @@ namespace SHARRandomizer
                 var playerCar = player.Car;
                 if (playerCar != null && playerCar.Address != 0)
                 {
-                    // Destroy vehicle through engine event
-                    try
-                    {
-                        playerCar.VehicleDestroyed = true;
-                        playerCar.HitPoints = 0f;
-                        playerCar.NoDamageTimer = 0f;
-                        playerCar.AlreadyPlayedExplosion = false;
-                        Common.WriteLog("Set player car as destroyed in memory.", "ProcessDeathLinkMessage");
-                    }
-                    catch (Exception ex)
-                    {
-                        Common.WriteLog($"Failed to trigger vehicle destroyed event: {ex.Message}", "ProcessDeathLinkMessage");
-                    }
+                    playerCar.VehicleDestroyed = true;
+                    playerCar.HitPoints = 0f;
+                    playerCar.NoDamageTimer = 0f;
+                    playerCar.AlreadyPlayedExplosion = false;
+
                     Common.WriteLog("Player car destroyed by death link.", "ProcessDeathLinkMessage");
                 }
                 else
                 {
-                    // Player is on foot, launch them away
-                    try
-                    {   
-                        // Apply upward velocity to create jump effect
-                        float speedX = Random.Shared.Next(50, 151) * (Random.Shared.Next(0, 2) == 0 ? 1 : -1);
-                        float speedY = Random.Shared.Next(100, 251); // Strong upward velocity
-                        float speedZ = Random.Shared.Next(50, 151) * (Random.Shared.Next(0, 2) == 0 ? 1 : -1);
-                        var launchVelocity = new SHARMemory.SHAR.Structs.Vector3(30, 30, 30);
-                        
-                        var simState = player.SimState;
-                        var velocityState = simState.VelocityState;
-                        velocityState.Linear = launchVelocity;
-                        simState.VelocityState = velocityState;
-                        
-                        Common.WriteLog($"Player launched away with velocity ({speedX}, {speedY}, {speedZ}).", "KillLocalPlayer");
-                    }
-                    catch (Exception ex)
-                    {
-                        Common.WriteLog($"Could not launch player: {ex.Message}", "KillLocalPlayer");
-                    }
+                    //Instant Bust
+                    _currentMemory.Singletons.HitNRunManager.TicketTimer = 1f;
+                    _currentMemory.Singletons.HitNRunManager.CopTicketTimeThreshold = 1f;
+                    _currentMemory.Singletons.HitNRunManager.CopTicketDistance = float.MaxValue;
+                    _currentMemory.Singletons.HitNRunManager.CopTicketDistanceOnFoot = float.MaxValue;
+                    _currentMemory.Singletons.HitNRunManager.CurrHitAndRun = 100f;
+
+                    Common.WriteLog("Player busted by death link.", "ProcessDeathLinkMessage");
                 }
             }
             catch (Exception ex)
@@ -2371,19 +2281,5 @@ namespace SHARRandomizer
                 Common.WriteLog($"Error in KillLocalPlayer: {ex.Message}", "KillLocalPlayer");
             }
         }
-    }
-
-    public class MissionDto 
-    {
-        public string Name { get; set; }
-        public string State {get;set;}
-        public List<StageDto> Stages {get;set;}
-        public long Ticks {get;set;}
-    }
-
-    public class StageDto 
-    {
-        public string Name {get;set;}
-        public string State {get;set;}
     }
 }
