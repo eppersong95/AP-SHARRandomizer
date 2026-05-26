@@ -83,8 +83,9 @@ namespace SHARRandomizer
         System.Numerics.Vector3 lCoords = new System.Numerics.Vector3(1000, 0, 1000);
 
         // Death link tracking fields
-        private SHARMissionClass.MissionStates? _lastMissionState = null;
+        private string _lastFailedMissionName {get;set;}
         private bool _lastPlayerVehicleDestroyed = false;
+        private bool _processingIncomingDeathLink = false;
 
         uint gameLanguage;
         private Watcher? _watcher;
@@ -93,8 +94,6 @@ namespace SHARRandomizer
         private Memory? _currentMemory;
 
         private (int, int) LevelOverTarget = (0, 0);
-
-        public List<MissionDto> MissionData {get;set;} = [];
 
         public MemoryManip(ArchipelagoClient ac)
         {
@@ -389,6 +388,17 @@ namespace SHARRandomizer
                 catch (Exception ex)
                 {
                     Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
+                }
+            });
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await MonitorMissionFailure(memory);
+                }
+                catch (Exception ex)
+                {
+                    Common.WriteLog($"{ex}", "MonitorMissionFailure");
                 }
             });
         }
@@ -1882,20 +1892,6 @@ namespace SHARRandomizer
                 return Task.CompletedTask;
             }
 
-            else if (dialog.Event == SHARMemory.SHAR.Globals.Events.MISSION_FAILURE)
-            {
-                if (_deathLinkSuppressions > 0)
-                {
-                    _deathLinkSuppressions--;
-                    Common.WriteLog("Suppressed death link send after incoming death link mission failure.", "MonitorDeathLinkTriggers");
-                }
-                else
-                {
-                    Common.WriteLog("Mission failed detected. Sending death link.", "MonitorDeathLinkTriggers");
-                    ac.SendDeathLink("Mission failed");
-                }
-            }
-
             return Task.CompletedTask;
         }
 
@@ -2149,12 +2145,6 @@ namespace SHARRandomizer
             Extensions.SetString(language, "APProgress", "Disconnected.");
             Extensions.SetString(language, "APLog", "Disconnected.");
         }
-
-        public void SuppressDeathLinkSend()
-        {
-            _deathLinkSuppressions = 2;
-        }
-
         
         private async Task MonitorDeathLinkTriggers(Memory memory)
         {
@@ -2164,7 +2154,6 @@ namespace SHARRandomizer
                 {
                     if (!Extensions.InGame(memory))
                     {
-                        _lastMissionState = null;
                         _lastPlayerVehicleDestroyed = false;
                         await Task.Delay(100, Token);
                         continue;
@@ -2182,16 +2171,7 @@ namespace SHARRandomizer
 
                         if (!_lastPlayerVehicleDestroyed && vehicleDestroyed)
                         {
-                            if (_deathLinkSuppressions > 0)
-                            {
-                                _deathLinkSuppressions--;
-                                Common.WriteLog("Suppressed death link send after incoming death link vehicle destruction.", "MonitorDeathLinkTriggers");
-                            }
-                            else
-                            {
-                                Common.WriteLog("Player vehicle destroyed detected. Sending death link.", "MonitorDeathLinkTriggers");
-                                ac.SendDeathLink("Vehicle Destroyed");
-                            }
+                            SendDeathLink("Player vehicle destroyed");
                         }
 
                         _lastPlayerVehicleDestroyed = vehicleDestroyed;
@@ -2214,7 +2194,56 @@ namespace SHARRandomizer
             }
         }
 
-        private int _deathLinkSuppressions = 0;
+        private async Task MonitorMissionFailure(Memory memory)
+        {
+            while (!memory.Process.HasExited)
+            {
+                try
+                {
+                    if (!Extensions.InGame(memory))
+                    {
+                        await Task.Delay(10, Token);
+                        continue;
+                    }
+
+                    var gameplayManager = memory.Globals?.GameplayManager as MissionManager;
+                    var currentMission = gameplayManager?.GetCurrentMission();
+                    var stageConditions = currentMission?.GetCurrentStage()?.Conditions;
+
+                    if (currentMission.Name(stageConditions?.Any(c => c.IsViolated) ?? false))
+                    {
+                        _lastMissionFailed = true;
+                        Common.WriteLog("Mission failure detected!", "MonitorMissionFailure");
+                        SendDeathLink("Mission failed");
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Common.WriteLog($"Error monitoring death link triggers: {ex}", "MonitorDeathLinkTriggers");
+                }
+
+                await Task.Delay(10, Token);
+            }
+        }
+
+        public void SendDeathLink(string cause)
+        {
+            if (_processingIncomingDeathLink)
+            {
+                _processingIncomingDeathLink = false;
+                Common.WriteLog("Suppressed death link send.", "SendDeathLink");
+            }
+            else
+            {
+                Common.WriteLog($"{cause} detected. Sending death link.", "SendDeathLink");
+                ac.SendDeathLink(cause);
+            }
+        }
+
 
         public void ProcessDeathLinkMessage()
         {
@@ -2222,6 +2251,8 @@ namespace SHARRandomizer
 
             try
             {
+                _processingIncomingDeathLink = true;
+
                 if (_currentMemory == null)
                 {
                     Common.WriteLog("Cannot kill player: Memory not available.", "KillLocalPlayer");

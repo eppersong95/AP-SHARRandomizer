@@ -143,7 +143,6 @@ namespace SHARRandomizer
                     Common.WriteLog($"Reason: {deathLinkObject.Cause}", "ArchipelagoClient::DeathLinkReceived");   
                 }
 
-                mm?.SuppressDeathLinkSend();
                 mm?.ProcessDeathLinkMessage();
             };
         }
