@@ -86,7 +86,7 @@ namespace SHARRandomizer
         // Death link tracking fields
         private MissionModel _previousMission {get;set;}
         private bool _lastPlayerVehicleDestroyed = false;
-        private bool _processingIncomingDeathLink = false;
+        private DateTime _lastDeathLinkEventTime {get;set;} = DateTime.MinValue;
 
         uint gameLanguage;
         private Watcher? _watcher;
@@ -2252,16 +2252,15 @@ namespace SHARRandomizer
 
         public void SendDeathLink(string cause)
         {
-            if (_processingIncomingDeathLink)
+            if (ShouldSuppressDeathLinkEvent())
             {
-                _processingIncomingDeathLink = false;
                 Common.WriteLog("Suppressed death link send.", "SendDeathLink");
+                return;
             }
-            else
-            {
-                Common.WriteLog($"{cause} detected. Sending death link.", "SendDeathLink");
-                ac.SendDeathLink(cause);
-            }
+
+            Common.WriteLog($"{cause} detected. Sending death link.", "SendDeathLink");
+            ac.SendDeathLink(cause);
+            _lastDeathLinkEventTime = DateTime.UtcNow;
         }
 
 
@@ -2271,7 +2270,11 @@ namespace SHARRandomizer
 
             try
             {
-                _processingIncomingDeathLink = true;
+                if (ShouldSuppressDeathLinkEvent())
+                {
+                    Common.WriteLog("Suppressed death link received event..", "ProcessDeathLinkMessage");
+                    return;
+                }
 
                 if (_currentMemory == null)
                 {
@@ -2292,6 +2295,7 @@ namespace SHARRandomizer
                         {
                             currentStage.Conditions[0].IsViolated = true;
                             Common.WriteLog("Mission failed by death link.", "ProcessDeathLinkMessage");
+                            _lastDeathLinkEventTime = DateTime.UtcNow;
                             return;
                         }
                     }
@@ -2314,6 +2318,9 @@ namespace SHARRandomizer
                     playerCar.AlreadyPlayedExplosion = false;
 
                     Common.WriteLog("Player car destroyed by death link.", "ProcessDeathLinkMessage");
+                    _lastDeathLinkEventTime = DateTime.UtcNow;
+
+                    return;
                 }
                 else
                 {
@@ -2324,13 +2331,20 @@ namespace SHARRandomizer
                     _currentMemory.Singletons.HitNRunManager.CopTicketDistanceOnFoot = float.MaxValue;
                     _currentMemory.Singletons.HitNRunManager.CurrHitAndRun = 100f;
 
+                    _lastDeathLinkEventTime = DateTime.UtcNow;
                     Common.WriteLog("Player busted by death link.", "ProcessDeathLinkMessage");
+                    return;
                 }
             }
             catch (Exception ex)
             {
                 Common.WriteLog($"Error in KillLocalPlayer: {ex.Message}", "KillLocalPlayer");
             }
+        }
+    
+        private bool ShouldSuppressDeathLinkEvent()
+        {
+            return DateTime.UtcNow - _lastDeathLinkEventTime < TimeSpan.FromSeconds(5);
         }
     }
 }
