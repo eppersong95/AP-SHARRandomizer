@@ -2283,7 +2283,7 @@ namespace SHARRandomizer
 
                 if (_currentMemory == null)
                 {
-                    Common.WriteLog("Cannot kill player: Memory not available.", "KillLocalPlayer");
+                    Common.WriteLog("Cannot kill player: Memory not available.", "ProcessDeathLinkMessage");
                     return;
                 }
 
@@ -2311,7 +2311,7 @@ namespace SHARRandomizer
                 var player = _currentMemory.Singletons.CharacterManager?.Player;
                 if (player == null)
                 {
-                    Common.WriteLog("Could not find player.", "KillLocalPlayer");
+                    Common.WriteLog("Could not find player.", "ProcessDeathLinkMessage");
                     return;
                 }
 
@@ -2343,7 +2343,7 @@ namespace SHARRandomizer
             }
             catch (Exception ex)
             {
-                Common.WriteLog($"Error in KillLocalPlayer: {ex.Message}", "KillLocalPlayer");
+                Common.WriteLog($"Error in ProcessDeathLinkMessage: {ex.Message}", "ProcessDeathLinkMessage");
             }
             finally
             {
@@ -2351,7 +2351,7 @@ namespace SHARRandomizer
                 {
                     await Task.Delay(5000);
                     _isProcessingIncomingDeathLink = false;
-                    Common.WriteLog("Death Link protection flag lifted. Player vulnerable again.", "KillLocalPlayer");
+                    Common.WriteLog("Death Link protection flag lifted. Player vulnerable again.", "ProcessDeathLinkMessage");
                 });
             }
         }

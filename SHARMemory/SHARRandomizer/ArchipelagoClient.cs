@@ -228,9 +228,6 @@ namespace SHARRandomizer
                 Common.WriteLog($"Successfully connected to {URI} as {SLOTNAME}", "ArchipelagoClient::TryConnect");
                 Common.WriteLog("Slot Data:", "ArchipelagoClient::TryConnect");
 
-                var configJson = JsonSerializer.Serialize(login.SlotData, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(@"C:\Users\garre\Documents\config.json", configJson);
-
                 foreach (var kvp in login.SlotData)
                 {
                     Common.WriteLog($"  {kvp.Key}: {kvp.Value}", "ArchipelagoClient::TryConnect");
