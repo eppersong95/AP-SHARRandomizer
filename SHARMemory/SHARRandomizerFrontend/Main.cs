@@ -213,6 +213,8 @@ namespace SHARRandomizerFrontend
         {
             Common.ac.SendMessage(tbMessage.Text);
             tbMessage.Clear();
+
+            _mm.ProcessDeathLinkMessage();
         }
 
         private void btnDownload_Click(object sender, EventArgs e)
