@@ -86,6 +86,7 @@ namespace SHARRandomizer
         // Death link tracking fields
         private MissionModel _previousMission {get;set;}
         private bool _lastPlayerVehicleDestroyed = false;
+        private bool _isProcessingIncomingDeathLink {get;set;} = false;
         private DateTime _lastDeathLinkEventTime {get;set;} = DateTime.MinValue;
 
         uint gameLanguage;
@@ -380,17 +381,21 @@ namespace SHARRandomizer
                     Common.WriteLog($"{ex}", "CardRadar");
                 }
             });
-            _ = Task.Run(async () =>
+
+            if (ac.deathLink)
             {
-                try
+                _ = Task.Run(async () =>
                 {
-                    await MonitorDeathLinkTriggers(memory);
-                }
-                catch (Exception ex)
-                {
-                    Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
-                }
-            });
+                    try
+                    {
+                        await MonitorDeathLinkTriggers(memory);
+                    }
+                    catch (Exception ex)
+                    {
+                        Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
+                    }
+                });
+            }
         }
 
         bool CheckTicketRequirements(Memory memory, CharacterSheetManager characterSheet)
@@ -2282,6 +2287,9 @@ namespace SHARRandomizer
                     return;
                 }
 
+                _isProcessingIncomingDeathLink = true;
+                _lastDeathLinkEventTime = DateTime.UtcNow;
+
                 // Check if player is in a mission
                 var gameplayManager = _currentMemory.Globals?.GameplayManager as MissionManager;
                 if (gameplayManager != null)
@@ -2295,7 +2303,6 @@ namespace SHARRandomizer
                         {
                             currentStage.Conditions[0].IsViolated = true;
                             Common.WriteLog("Mission failed by death link.", "ProcessDeathLinkMessage");
-                            _lastDeathLinkEventTime = DateTime.UtcNow;
                             return;
                         }
                     }
@@ -2318,7 +2325,6 @@ namespace SHARRandomizer
                     playerCar.AlreadyPlayedExplosion = false;
 
                     Common.WriteLog("Player car destroyed by death link.", "ProcessDeathLinkMessage");
-                    _lastDeathLinkEventTime = DateTime.UtcNow;
 
                     return;
                 }
@@ -2331,7 +2337,6 @@ namespace SHARRandomizer
                     _currentMemory.Singletons.HitNRunManager.CopTicketDistanceOnFoot = float.MaxValue;
                     _currentMemory.Singletons.HitNRunManager.CurrHitAndRun = 100f;
 
-                    _lastDeathLinkEventTime = DateTime.UtcNow;
                     Common.WriteLog("Player busted by death link.", "ProcessDeathLinkMessage");
                     return;
                 }
@@ -2340,11 +2345,21 @@ namespace SHARRandomizer
             {
                 Common.WriteLog($"Error in KillLocalPlayer: {ex.Message}", "KillLocalPlayer");
             }
+            finally
+            {
+                Task.Run(async () =>
+                {
+                    await Task.Delay(5000);
+                    _isProcessingIncomingDeathLink = false;
+                    Common.WriteLog("Death Link protection flag lifted. Player vulnerable again.", "KillLocalPlayer");
+                });
+            }
         }
     
         private bool ShouldSuppressDeathLinkEvent()
         {
-            return DateTime.UtcNow - _lastDeathLinkEventTime < TimeSpan.FromSeconds(5);
+            return _isProcessingIncomingDeathLink
+                || DateTime.UtcNow - _lastDeathLinkEventTime < TimeSpan.FromSeconds(5);
         }
     }
 }

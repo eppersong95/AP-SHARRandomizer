@@ -54,6 +54,7 @@ namespace SHARRandomizer
 
         public double timerMod;
         public bool levelLock = false;
+        public bool deathLink = false;
 
         public enum VICTORY
         {
@@ -226,8 +227,9 @@ namespace SHARRandomizer
                 var login = (LoginSuccessful)loginResult;
                 Common.WriteLog($"Successfully connected to {URI} as {SLOTNAME}", "ArchipelagoClient::TryConnect");
                 Common.WriteLog("Slot Data:", "ArchipelagoClient::TryConnect");
-                
-                SetupDeathLinkService();
+
+                var configJson = JsonSerializer.Serialize(login.SlotData, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(@"C:\Users\garre\Documents\config.json", configJson);
 
                 foreach (var kvp in login.SlotData)
                 {
@@ -254,6 +256,12 @@ namespace SHARRandomizer
                     wrenchEfficiency = Convert.ToInt32(login.SlotData["Filler_Wrench_Efficiency"]);
                     hnrEfficiency = Convert.ToInt32(login.SlotData["Filler_HitNRun_Reset_Efficiency"]);
                     levelLock = Convert.ToBoolean(login.SlotData["Lock_Levels"]);
+                    deathLink = Convert.ToBoolean(login.SlotData["death_link"]);
+
+                    if (deathLink)
+                    {
+                        SetupDeathLinkService();
+                    }
 
                     var ingameHints = login.SlotData["ingamehints"];
 
