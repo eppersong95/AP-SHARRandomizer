@@ -83,7 +83,7 @@ namespace SHARRandomizer
         System.Numerics.Vector3 lCoords = new System.Numerics.Vector3(1000, 0, 1000);
 
         // Death link tracking fields
-        private string _lastFailedMissionName {get;set;}
+        private MissionModel _previousMission {get;set;}
         private bool _lastPlayerVehicleDestroyed = false;
         private bool _processingIncomingDeathLink = false;
 
@@ -2207,15 +2207,36 @@ namespace SHARRandomizer
                     }
 
                     var gameplayManager = memory.Globals?.GameplayManager as MissionManager;
+
+                    if (gameplayManager == null)
+                    {
+                        _previousMission = null;
+                        return;
+                    }
+
                     var currentMission = gameplayManager?.GetCurrentMission();
                     var stageConditions = currentMission?.GetCurrentStage()?.Conditions;
 
-                    if (currentMission.Name(stageConditions?.Any(c => c.IsViolated) ?? false))
+                    if (currentMission == null || (stageConditions == null || !stageConditions.Any()))
                     {
-                        _lastMissionFailed = true;
-                        Common.WriteLog("Mission failure detected!", "MonitorMissionFailure");
+                        _previousMission = null;
+                        return;
+                    }
+
+                    var currentMissionModel = new MissionModel
+                    {
+                        Name = currentMission.Name,
+                        IsFailed = stageConditions.Any(c => c.IsViolated)
+                    };
+
+                    if (currentMissionModel.IsFailed && 
+                        (currentMissionModel.Name != _previousMission?.Name || currentMissionModel.IsFailed != _previousMission?.IsFailed)
+                    )
+                    {
                         SendDeathLink("Mission failed");
                     }
+
+                    _previousMission = currentMissionModel;
                 }
                 catch (TaskCanceledException)
                 {
