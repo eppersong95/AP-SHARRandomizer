@@ -15,6 +15,7 @@ using System.Threading;
 using static LocationTranslations;
 using static SHARRandomizer.ArchipelagoClient;
 using System.Text.Json;
+using SHARRandomizer.Enums;
 
 namespace SHARRandomizer
 {
@@ -388,17 +389,6 @@ namespace SHARRandomizer
                 catch (Exception ex)
                 {
                     Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
-                }
-            });
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await MonitorMissionFailure(memory);
-                }
-                catch (Exception ex)
-                {
-                    Common.WriteLog($"{ex}", "MonitorMissionFailure");
                 }
             });
         }
@@ -2145,56 +2135,8 @@ namespace SHARRandomizer
             Extensions.SetString(language, "APProgress", "Disconnected.");
             Extensions.SetString(language, "APLog", "Disconnected.");
         }
-        
+
         private async Task MonitorDeathLinkTriggers(Memory memory)
-        {
-            while (!memory.Process.HasExited)
-            {
-                try
-                {
-                    if (!Extensions.InGame(memory))
-                    {
-                        _lastPlayerVehicleDestroyed = false;
-                        await Task.Delay(100, Token);
-                        continue;
-                    }
-
-                    var player = memory.Singletons.CharacterManager?.Player;
-                    if (player != null)
-                    {
-                        var playerCar = player.Car;
-                        bool vehicleDestroyed = false;
-                        if (playerCar != null && playerCar.Address != 0)
-                        {
-                            vehicleDestroyed = playerCar.VehicleDestroyed;
-                        }
-
-                        if (!_lastPlayerVehicleDestroyed && vehicleDestroyed)
-                        {
-                            SendDeathLink("Player vehicle destroyed");
-                        }
-
-                        _lastPlayerVehicleDestroyed = vehicleDestroyed;
-                    }
-                    else
-                    {
-                        _lastPlayerVehicleDestroyed = false;
-                    }
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Common.WriteLog($"Error monitoring death link triggers: {ex}", "MonitorDeathLinkTriggers");
-                }
-
-                await Task.Delay(100, Token);
-            }
-        }
-
-        private async Task MonitorMissionFailure(Memory memory)
         {
             while (!memory.Process.HasExited)
             {
@@ -2206,37 +2148,18 @@ namespace SHARRandomizer
                         continue;
                     }
 
-                    var gameplayManager = memory.Globals?.GameplayManager as MissionManager;
-
-                    if (gameplayManager == null)
+                    foreach (var trigger in Enum.GetValues<DeathLinkTrigger>())
                     {
-                        _previousMission = null;
-                        continue;
+                        var triggerCheck = GetMethodForTrigger(trigger, memory);
+                        var shouldTriggerDeathLink = await triggerCheck;
+
+                        if (shouldTriggerDeathLink)
+                        {
+                            Common.WriteLog($"Triggering death link from trigger: {trigger}", "MonitorDeathLinkTriggers");
+                            SendDeathLink(trigger.ToString());
+                            continue;
+                        }
                     }
-
-                    var currentMission = gameplayManager?.GetCurrentMission();
-                    var stageConditions = currentMission?.GetCurrentStage()?.Conditions;
-
-                    if (currentMission == null || stageConditions == null || !stageConditions.Any())
-                    {
-                        _previousMission = null;
-                        continue;
-                    }
-
-                    var currentMissionModel = new MissionModel
-                    {
-                        Name = currentMission.Name,
-                        IsFailed = stageConditions.Any(c => c.IsViolated)
-                    };
-
-                    if (currentMissionModel.IsFailed && 
-                        (currentMissionModel.Name != _previousMission?.Name || currentMissionModel.IsFailed != _previousMission?.IsFailed)
-                    )
-                    {
-                        SendDeathLink("Mission failed");
-                    }
-
-                    _previousMission = currentMissionModel;
                 }
                 catch (TaskCanceledException)
                 {
@@ -2249,6 +2172,82 @@ namespace SHARRandomizer
 
                 await Task.Delay(10, Token);
             }
+        }
+
+        private Task<bool> GetMethodForTrigger(DeathLinkTrigger trigger, Memory memory)
+        {
+            return trigger switch
+            {
+                DeathLinkTrigger.VehicleDestroyed => MonitorVehicleDestroyedTrigger(memory),
+                DeathLinkTrigger.MissionFailed => MonitorMissionFailedTrigger(memory),
+                _ => throw new ArgumentOutOfRangeException(nameof(trigger), $"No method defined for trigger {trigger}")
+            };
+        }
+
+        private async Task<bool> MonitorMissionFailedTrigger(Memory memory)
+        {
+            var gameplayManager = memory.Globals?.GameplayManager as MissionManager;
+            var isDeathLinkTriggered = false;
+
+            if (gameplayManager == null)
+            {
+                _previousMission = null;
+                return isDeathLinkTriggered;
+            }
+
+            var currentMission = gameplayManager?.GetCurrentMission();
+            var stageConditions = currentMission?.GetCurrentStage()?.Conditions;
+
+            if (currentMission == null || stageConditions == null || !stageConditions.Any())
+            {
+                _previousMission = null;
+                return isDeathLinkTriggered;
+            }
+
+            var currentMissionModel = new MissionModel
+            {
+                Name = currentMission.Name,
+                IsFailed = stageConditions.Any(c => c.IsViolated)
+            };
+
+            if (currentMissionModel.IsFailed && 
+                (currentMissionModel.Name != _previousMission?.Name || currentMissionModel.IsFailed != _previousMission?.IsFailed)
+            )
+            {
+                isDeathLinkTriggered = true;
+            }
+
+            _previousMission = currentMissionModel;
+            return isDeathLinkTriggered;    
+        }
+        
+        private async Task<bool> MonitorVehicleDestroyedTrigger(Memory memory)
+        {
+            var shouldTriggerDeathLink = false;
+
+            var player = memory.Singletons.CharacterManager?.Player;
+            if (player != null)
+            {
+                var playerCar = player.Car;
+                bool vehicleDestroyed = false;
+                if (playerCar != null && playerCar.Address != 0)
+                {
+                    vehicleDestroyed = playerCar.VehicleDestroyed;
+                }
+
+                if (!_lastPlayerVehicleDestroyed && vehicleDestroyed)
+                {
+                    shouldTriggerDeathLink = true;
+                }
+
+                _lastPlayerVehicleDestroyed = vehicleDestroyed;
+            }
+            else
+            {
+                _lastPlayerVehicleDestroyed = false;
+            }
+
+            return shouldTriggerDeathLink;
         }
 
         public void SendDeathLink(string cause)
