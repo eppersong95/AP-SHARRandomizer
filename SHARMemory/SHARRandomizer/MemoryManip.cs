@@ -2211,16 +2211,16 @@ namespace SHARRandomizer
                     if (gameplayManager == null)
                     {
                         _previousMission = null;
-                        return;
+                        continue;
                     }
 
                     var currentMission = gameplayManager?.GetCurrentMission();
                     var stageConditions = currentMission?.GetCurrentStage()?.Conditions;
 
-                    if (currentMission == null || (stageConditions == null || !stageConditions.Any()))
+                    if (currentMission == null || stageConditions == null || !stageConditions.Any())
                     {
                         _previousMission = null;
-                        return;
+                        continue;
                     }
 
                     var currentMissionModel = new MissionModel
