@@ -6,6 +6,7 @@
       "Ambulance",
       "Ambulance",
       "Notarztwagen",
+      "",
       "Ambulancia"
     ]
   },
@@ -16,6 +17,7 @@
       "Longhorn",
       "Cornu",
       "Longhorn",
+      "",
       "Longhorn"
     ]
   },
@@ -26,6 +28,7 @@
       "ATV",
       "VTT",
       "ATV",
+      "",
       "Todo terreno"
     ]
   },
@@ -36,6 +39,7 @@
       "Ferrini - Red",
       "Ferrini - Rouge",
       "Ferrini - Rot",
+      "",
       "Ferrini rojo"
     ]
   },
@@ -46,6 +50,7 @@
       "El Carro Loco",
       "El Carro Loco",
       "El Carro Loco",
+      "",
       "El carro loco"
     ]
   },
@@ -56,6 +61,7 @@
       "Book Burning Van",
       "Van Brûle Livre",
       "Bücherverbrennungsmobil",
+      "",
       "Furgoneta quemalibros"
     ]
   },
@@ -66,6 +72,7 @@
       "Burns Armored Truck",
       "Camion blindé de Burns",
       "Burns' Panzerwagen",
+      "",
       "El camión blindado de Burns"
     ]
   },
@@ -76,6 +83,7 @@
       "36 Stutz Bearcat",
       "36 Stutz Bearcat",
       "36 Stutz Bearcat",
+      "",
       "Stutz Bearcat del 36"
     ]
   },
@@ -86,6 +94,7 @@
       "Car Built For Homer",
       "Voiture faite pour Homer",
       "Von Homer entworfenes Auto",
+      "",
       "Coche hecho de encargo para Homer"
     ]
   },
@@ -96,6 +105,7 @@
       "Armored Truck",
       "Camion blindé",
       "Panzerwagen",
+      "",
       "Camión blindado"
     ]
   },
@@ -106,6 +116,7 @@
       "Ferrini - Black",
       "Ferrini - Noire",
       "Ferrini - Schwarz",
+      "",
       "Ferrini negro"
     ]
   },
@@ -116,6 +127,7 @@
       "Bonestorm Truck",
       "Camion Bonestorm",
       "Bonestorm-Laster",
+      "",
       "Camión Bonestorm"
     ]
   },
@@ -126,6 +138,7 @@
       "Cell Phone Car A",
       "Voiture téléphone A",
       "Handy - Auto A",
+      "",
       "Coche con móvil A"
     ]
   },
@@ -136,6 +149,7 @@
       "Cell Phone Car B",
       "Voiture téléphone B",
       "Handy - Auto B",
+      "",
       "Coche con móvil B"
     ]
   },
@@ -146,6 +160,7 @@
       "Cell Phone Car C",
       "Voiture téléphone C",
       "Handy - Auto C",
+      "",
       "Coche con móvil C"
     ]
   },
@@ -156,6 +171,7 @@
       "Cell Phone Car D",
       "Voiture téléphone D",
       "Handy - Auto D",
+      "",
       "Coche con móvil D"
     ]
   },
@@ -166,6 +182,7 @@
       "Cola Truck",
       "Camion de cola",
       "Cola-Laster",
+      "",
       "Camión de cola"
     ]
   },
@@ -176,6 +193,7 @@
       "Cube Van",
       "Van cube",
       "Geschlossener Van",
+      "",
       "Furgoneta de cubo"
     ]
   },
@@ -186,6 +204,7 @@
       "Curator",
       "Voiture du conservateur",
       "Kurator",
+      "",
       "Coche del guarda jurado"
     ]
   },
@@ -196,6 +215,7 @@
       "Donut Truck",
       "Camion de beignets",
       "Donut-Laster",
+      "",
       "Camión de donuts"
     ]
   },
@@ -206,6 +226,7 @@
       "Duff Truck",
       "Camion de Duff",
       "Duff-Laster",
+      "",
       "Camión de Duff"
     ]
   },
@@ -216,6 +237,7 @@
       "Fire Truck",
       "Camion de pompiers",
       "Feuerwehrwagen",
+      "",
       "Camión de bomberos"
     ]
   },
@@ -226,6 +248,7 @@
       "Hearse",
       "Corbillard",
       "Leichenwagen",
+      "",
       "Coche fúnebre"
     ]
   },
@@ -236,6 +259,7 @@
       "Krusty's Limo",
       "Limo de Krusty",
       "Krustys Limousine",
+      "",
       "Limusina de Krusty"
     ]
   },
@@ -246,6 +270,7 @@
       "Pickup Truck",
       "Camion Pickup",
       "Kleinlaster",
+      "",
       "Furgoneta"
     ]
   },
@@ -256,6 +281,7 @@
       "Limo",
       "Limo",
       "Limousine",
+      "",
       "Limusina"
     ]
   },
@@ -266,6 +292,7 @@
       "Milk Truck",
       "Camion de lait",
       "Milchlaster",
+      "",
       "Camión de leche"
     ]
   },
@@ -276,6 +303,7 @@
       "Nerd Car",
       "Voiture de techy",
       "Streberauto",
+      "",
       "Coche de empollón"
     ]
   },
@@ -286,6 +314,7 @@
       "Nonuplets Minivan",
       "Minivan Nonuplés",
       "Neunlings-Minivan",
+      "",
       "Camioneta de nonillizos"
     ]
   },
@@ -296,6 +325,7 @@
       "Coffin Car",
       "Voiture cercueil",
       "Sargwagen",
+      "",
       "Coche ataúd"
     ]
   },
@@ -306,6 +336,7 @@
       "Kremlin",
       "Kremlin",
       "Kremlin",
+      "",
       "Kremlin"
     ]
   },
@@ -316,6 +347,7 @@
       "Compact Car",
       "Coupé",
       "Kompaktwagen",
+      "",
       "Coche compacto"
     ]
   },
@@ -326,6 +358,7 @@
       "Chase Sedan",
       "Berline de poursuite",
       "Verfolgungswagen",
+      "",
       "Sedán rápido"
     ]
   },
@@ -336,6 +369,7 @@
       "Surveillance Van",
       "Van de surveillance",
       "Überwachungsauto",
+      "",
       "Furgoneta de vigilancia"
     ]
   },
@@ -346,6 +380,7 @@
       "R/C Buggy",
       "Buggy télécommandé",
       "R/C-Buggy",
+      "",
       "Coche teledirigido "
     ]
   },
@@ -356,6 +391,7 @@
       "Electaurus",
       "Electaurus",
       "Electaurus",
+      "",
       "Electaurus"
     ]
   },
@@ -366,6 +402,7 @@
       "Family Sedan",
       "Berline familiale",
       "Familienkutsche",
+      "",
       "Sedán familiar"
     ]
   },
@@ -376,6 +413,7 @@
       "Fish Van",
       "Van de pêche",
       "Fischwagen",
+      "",
       "Furgoneta de pescado"
     ]
   },
@@ -386,6 +424,7 @@
       "Open Wheel Race Car",
       "Voiture de course",
       "Rennauto",
+      "",
       "Coche de carreras"
     ]
   },
@@ -396,6 +435,7 @@
       "Hover Car",
       "Aéroglisseur",
       "Schwebe-Wagen",
+      "",
       "Coche aerodeslizador"
     ]
   },
@@ -406,6 +446,7 @@
       "Garbage Truck",
       "Camion poubelle",
       "Müllwagen",
+      "",
       "Camión de la basura"
     ]
   },
@@ -416,6 +457,7 @@
       "Glass Truck",
       "Camion de vitrier",
       "Glaswagen",
+      "",
       "Camión de cristales"
     ]
   },
@@ -426,6 +468,7 @@
       "WWII Vehicle",
       "Jeep 2GM",
       "WK2-Fahrzeug",
+      "",
       "Vehículo WWII"
     ]
   },
@@ -436,6 +479,7 @@
       "WWII Vehicle w/ Rocket",
       "Jeep/roquette 2GM",
       "WK2-Fahrzeug mit Rakete",
+      "",
       "Vehículo WWII con cohete"
     ]
   },
@@ -446,6 +490,7 @@
       "Hallo Hearse",
       "Corbillard Halloween",
       "Halloween-Leichenwagen",
+      "",
       "Coche fúnebre Halloween"
     ]
   },
@@ -456,6 +501,7 @@
       "Hover Bike",
       "Aérocycle",
       "Schwebe-Motorrad",
+      "",
       "Moto aerodeslizadora"
     ]
   },
@@ -466,6 +512,7 @@
       "70's Sports Car",
       "Voiture de sport années 70",
       "70er-Jahre-Sportwagen",
+      "",
       "Deportivo de los 70"
     ]
   },
@@ -476,6 +523,7 @@
       "Honor Roller",
       "La fusée",
       "Ehrenroller",
+      "",
       "Corredor de honor"
     ]
   },
@@ -486,6 +534,7 @@
       "Charred Husk",
       "Charred Husk",
       "Verkohlte Hülse",
+      "",
       "Cáscara carbonizada"
     ]
   },
@@ -496,6 +545,7 @@
       "Planet Hype 50's Car",
       "Voiture années 50",
       "50er-Jahre-Auto Marke \"Planet Hype\"",
+      "",
       "Coche de los 50 de Planeta Hiper"
     ]
   },
@@ -506,6 +556,7 @@
       "Ice Cream Truck",
       "Camion de glaces",
       "Eiswagen",
+      "",
       "Camión de helados"
     ]
   },
@@ -516,6 +567,7 @@
       "Itchy and Scratchy Movie Truck",
       "Camion cinéma Itchy et Scratchy",
       "Itchy-und-Scratchy-Übertragungswagen",
+      "",
       "Camión de cine de Pica y Rasca"
     ]
   },
@@ -526,6 +578,7 @@
       "Knight Boat",
       "Bateau de chevalier",
       "Knight Boat",
+      "",
       "Barco de caballero"
     ]
   },
@@ -536,6 +589,7 @@
       "Clown Car",
       "Voiture de clown",
       "Clown-Auto",
+      "",
       "Coche de payaso"
     ]
   },
@@ -546,6 +600,7 @@
       "Malibu Stacy Car",
       "Voiture de Stacy",
       "Malibu-Stacy-Auto",
+      "",
       "Coche de Stacy Malibú"
     ]
   },
@@ -556,6 +611,7 @@
       "Canyonero",
       "Canyonero",
       "Canyonero",
+      "",
       "Cañonero"
     ]
   },
@@ -566,6 +622,7 @@
       "Minivan",
       "Minivan",
       "Minivan",
+      "",
       "Furgoneta"
     ]
   },
@@ -576,6 +633,7 @@
       "Sedan",
       "Berline",
       "Wagen",
+      "",
       "Sedán"
     ]
   },
@@ -586,6 +644,7 @@
       "Monorail Car",
       "Monorail",
       "Einschienenbahn-Waggon",
+      "",
       "Coche monorraíl"
     ]
   },
@@ -596,6 +655,7 @@
       "Mr. Plow",
       "M. Chasse -neige",
       "Mr. Schneepflug",
+      "",
       "El señor quitanieves"
     ]
   },
@@ -606,6 +666,7 @@
       "Nuclear Waste Truck",
       "Camion de déchets nucléaires",
       "Atommüll-Laster",
+      "",
       "Camión de residuos nucleares"
     ]
   },
@@ -616,6 +677,7 @@
       "Obliteratatron Big Wheel Truck",
       "camion Monster Oblitératron",
       "Truck der Vernichtung",
+      "",
       "Camión de ruedas grandes Arrasador"
     ]
   },
@@ -626,6 +688,7 @@
       "School Bus",
       "Bus scolaire",
       "Schulbus",
+      "",
       "Autobús escolar"
     ]
   },
@@ -636,6 +699,7 @@
       "Pickup",
       "Pickup",
       "Lieferwagen",
+      "",
       "Furgoneta"
     ]
   },
@@ -646,6 +710,7 @@
       "Pizza Van",
       "Camion pizza",
       "Pizza-Van",
+      "",
       "Furgoneta de pizzas"
     ]
   },
@@ -656,6 +721,7 @@
       "Plow King",
       "Super Chasse-neige",
       "Schneepflug",
+      "",
       "El rey de los quitanieves"
     ]
   },
@@ -676,6 +742,7 @@
       "Speed Rocket",
       "Speed rocket",
       "Speed Rocket",
+      "",
       "Cohete veloz"
     ]
   },
@@ -686,6 +753,7 @@
       "Mini School Bus",
       "Mini bus scolaire",
       "Kleiner Schulbus",
+      "",
       "Mini autobús escolar"
     ]
   },
@@ -696,6 +764,7 @@
       "Globex Super Villain Car",
       "Voiture de Globex le super-méchant",
       "Globex-Superschurken-Auto",
+      "",
       "El coche de Globex el súper villano"
     ]
   },
@@ -706,6 +775,7 @@
       "Sedan A",
       "Berline A",
       "Wagen A",
+      "",
       "Sedán A"
     ]
   },
@@ -716,6 +786,7 @@
       "Sedan B",
       "Berline B",
       "Wagen B",
+      "",
       "Sedán B"
     ]
   },
@@ -726,6 +797,7 @@
       "Ghost Ship",
       "Vaisseau fantôme",
       "Geisterschiff",
+      "",
       "Barco fantasma"
     ]
   },
@@ -736,6 +808,7 @@
       "Sedan",
       "Berline",
       "Wagen",
+      "",
       "Sedán"
     ]
   },
@@ -746,6 +819,7 @@
       "Mr. Burns' Limo",
       "Limo de Burns",
       "Mr. Burns' Limousine",
+      "",
       "Limusina del señor Burns"
     ]
   },
@@ -756,6 +830,7 @@
       "Bandit",
       "Bandit",
       "Bandit",
+      "",
       "Bandido"
     ]
   },
@@ -766,6 +841,7 @@
       "Sports Car A",
       "Voiture de sport A",
       "Sportwagen A",
+      "",
       "Coche deportivo A"
     ]
   },
@@ -776,6 +852,7 @@
       "Sports Car B",
       "Voiture de sport B",
       "Sportwagen B",
+      "",
       "Coche deportivo B"
     ]
   },
@@ -786,6 +863,7 @@
       "SUV",
       "VUL",
       "Geländewagen",
+      "",
       "Todo terreno de ciudad"
     ]
   },
@@ -796,6 +874,7 @@
       "Taxi",
       "Taxi",
       "Taxi",
+      "",
       "Taxi"
     ]
   },
@@ -806,6 +885,7 @@
       "Audi TT",
       "Audi TT",
       "Audi TT",
+      "",
       "Audi TT"
     ]
   },
@@ -816,6 +896,7 @@
       "\"Vote Quimby\" Truck",
       "Camion \"Voter Quimby\"",
       "Wählt Quimby-Laster",
+      "",
       "Camión \"vote a Quimby\""
     ]
   },
@@ -826,6 +907,7 @@
       "Station Wagon",
       "Break",
       "Kombiwagen",
+      "",
       "Ranchera"
     ]
   },
@@ -836,6 +918,7 @@
       "Police Car",
       "Voiture de police",
       "Polizeiauto",
+      "",
       "Coche de policía"
     ]
   },
@@ -846,6 +929,7 @@
       "Tractor",
       "Tracteur",
       "Traktor",
+      "",
       "Tractor"
     ]
   },
@@ -856,6 +940,7 @@
       "Witch Broom",
       "Balai de sorcière",
       "Hexenbesen",
+      "",
       "Escoba de la bruja"
     ]
   },
@@ -866,6 +951,7 @@
       "Zombie Car",
       "Zombiemobile",
       "Zombie-Wagen",
+      "",
       "Zombimóvil"
     ]
   },
@@ -876,6 +962,7 @@
       "Apu - Normal",
       "Apu - Normal",
       "Apu - Normal",
+      "",
       "Apu - Normal"
     ]
   },
@@ -895,6 +982,7 @@
       "Apu - American",
       "Apu - Américain",
       "Apu - Amerikaner",
+      "",
       "Apu - Americano"
     ]
   },
@@ -905,6 +993,7 @@
       "Apu - Army",
       "Apu - Armée",
       "Apu - Armee",
+      "",
       "Apu - Ejército"
     ]
   },
@@ -915,6 +1004,7 @@
       "Apu - B-sharps",
       "Apu - B-sharp",
       "Apu - Sänger",
+      "",
       "Apu - B-sharps"
     ]
   },
@@ -935,6 +1025,7 @@
       "Bart - Normal",
       "Bart - Normal",
       "Bart - Normal",
+      "",
       "Bart - Normal"
     ]
   },
@@ -1055,6 +1146,7 @@
       "Bart - Football",
       "Bart - Footballeur",
       "Bart - Football",
+      "",
       "Bart - Fútbol"
     ]
   },
@@ -1065,6 +1157,7 @@
       "Bart - Hugo",
       "Bart - Hugo",
       "Bart - Hugo",
+      "",
       "Bart - Hugo"
     ]
   },
@@ -1075,6 +1168,7 @@
       "Bart - Bartman",
       "Bart - Bartman",
       "Bart - Bartman",
+      "",
       "Bart - Bartman"
     ]
   },
@@ -1085,6 +1179,7 @@
       "Bart - Cadet",
       "Bart - Militaire",
       "Bart - Kadett",
+      "",
       "Bart - Cadete"
     ]
   },
@@ -1095,6 +1190,7 @@
       "Bart - Ninja",
       "Bart - Ninja",
       "Bart - Ninja",
+      "",
       "Bart -Ninja"
     ]
   },
@@ -1105,6 +1201,7 @@
       "Bart - Tall",
       "Bart - Grand",
       "Bart - Groß",
+      "",
       "Bart - Alto"
     ]
   },
@@ -1335,6 +1432,7 @@
       "Homer - Normal",
       "Homer - Normal",
       "Homer - Normal",
+      "",
       "Homer - Normal"
     ]
   },
@@ -1355,6 +1453,7 @@
       "Homer - Donut",
       "Homer - Beignet",
       "Homer - Donut",
+      "",
       "Homer - Donut"
     ]
   },
@@ -1365,6 +1464,7 @@
       "Homer - Evil",
       "Homer - Maléfique",
       "Homer - Böse",
+      "",
       "Homer - Malo"
     ]
   },
@@ -1375,6 +1475,7 @@
       "Homer - Muumuu",
       "Homer - Muumuu",
       "Homer - Muumuu",
+      "",
       "Homer - Muumuu"
     ]
   },
@@ -1385,6 +1486,7 @@
       "Homer - Dirty",
       "Homer - Crado",
       "Homer - Schmutzig",
+      "",
       "Homer - Sucio"
     ]
   },
@@ -1395,6 +1497,7 @@
       "Homer - Chosen One",
       "Homer - Elu",
       "Homer - Der Erwählte",
+      "",
       "Homer - El elegido"
     ]
   },
@@ -1405,6 +1508,7 @@
       "Homer - Casual",
       "Homer - Standard",
       "Homer - Leger",
+      "",
       "Homer - Informal"
     ]
   },
@@ -1485,6 +1589,7 @@
       "Lisa - Normal",
       "Lisa - Normale",
       "Lisa - Normal",
+      "",
       "Lisa - Normal"
     ]
   },
@@ -1515,6 +1620,7 @@
       "Lisa - Cool",
       "Lisa - Cool",
       "Lisa - Cool",
+      "",
       "Lisa - Guay"
     ]
   },
@@ -1525,6 +1631,7 @@
       "Lisa - Floreda",
       "Lisa - Floreda",
       "Lisa - Floreda",
+      "",
       "Lisa - Floreada"
     ]
   },
@@ -1535,6 +1642,7 @@
       "Lisa - Hockey",
       "Lisa - Hockey",
       "Lisa - Hockey",
+      "",
       "Lisa - Hockey"
     ]
   },
@@ -1605,6 +1713,7 @@
       "Marge - Normal",
       "Marge - Normale",
       "Marge - Normal",
+      "",
       "Marge - Normal"
     ]
   },
@@ -1655,6 +1764,7 @@
       "Marge - Classy",
       "Marge - Classe",
       "Marge - Aufgemotzt",
+      "",
       "Marge - Elegante"
     ]
   },
@@ -1665,6 +1775,7 @@
       "Marge - Police",
       "Marge - Police",
       "Marge - Polizei",
+      "",
       "Marge - Policía"
     ]
   },
@@ -1675,6 +1786,7 @@
       "Marge - Inmate",
       "Marge - Prison",
       "Marge - Gefängnisinsassin",
+      "",
       "Marge - Presidiaria"
     ]
   },

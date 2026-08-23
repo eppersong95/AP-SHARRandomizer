@@ -5,6 +5,7 @@
       "Start AP",
       "Débuter l'AP",
       "AP Starten",
+      "",
       "Empezar AP"
     ]
   },
@@ -14,6 +15,7 @@
       "Resume AP",
       "Continuer l'AP",
       "AP Fortsetzen",
+      "",
       "Continuar AP"
     ]
   },
@@ -23,6 +25,7 @@
       "Incorrect Patch File",
       "Chemin du Patch Incorrect",
       "Falsche Patch Datei",
+      "",
       "Archivo de Parche Incorrecto"
     ]
   }
