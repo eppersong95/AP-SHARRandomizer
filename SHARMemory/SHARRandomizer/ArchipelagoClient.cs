@@ -68,7 +68,10 @@ namespace SHARRandomizer
         public float wrenchEfficiency = 100;
         public float hnrEfficiency = 100;
         public bool[] requiredLevels = new bool[7]; //all false initially
+        public bool bonusRequired = false;
+        public bool raceRequired = false;
 
+        public Dictionary<int, Dictionary<int, string>> missionlocks = new Dictionary<int, Dictionary<int, string>>();
         Queue<(long itemID, long locationID, int player)> ighints = new();
 
         public enum ShopHintPolicy
@@ -207,6 +210,8 @@ namespace SHARRandomizer
                     wrenchEfficiency = Convert.ToInt32(login.SlotData["Filler_Wrench_Efficiency"]);
                     hnrEfficiency = Convert.ToInt32(login.SlotData["Filler_HitNRun_Reset_Efficiency"]);
                     levelLock = Convert.ToBoolean(login.SlotData["Lock_Levels"]);
+                    bonusRequired = Convert.ToBoolean(login.SlotData["Bonus_Mission_Required"]);
+                    raceRequired = Convert.ToBoolean(login.SlotData["Race_Mission_Required"]);
 
                     var ingameHints = login.SlotData["ingamehints"];
 
@@ -237,6 +242,27 @@ namespace SHARRandomizer
                         {
                             if (int.TryParse(level, out int i) && i - 1 >= 0 && i - 1 < requiredLevels.Length)
                                 requiredLevels[i - 1] = true;
+                        }
+                    }
+
+                    foreach (var kv in (JObject)login.SlotData["missionlockdic"])
+                    {
+                        string m = kv.Key;
+                        string car = kv.Value?.ToString();
+
+                        var match = System.Text.RegularExpressions.Regex.Match(m, @"^\(L(?<Level>\d+)M(?<Mission>\d+)\)");
+
+                        if (match.Success)
+                        {
+                            int level = Convert.ToInt32(match.Groups["Level"].Value);
+                            int mission = Convert.ToInt32(match.Groups["Mission"].Value);
+
+                            if (!missionlocks.ContainsKey(level))
+                            {
+                                missionlocks[level] = new Dictionary<int, string>();
+                            }
+
+                            missionlocks[level][mission] = car;
                         }
                     }
                 }
@@ -673,126 +699,5 @@ namespace SHARRandomizer
             Console.ReadKey();
             Environment.Exit(1);
         }
-
-        /*
-        public async Task<List<long>> GetLocalChecks()
-        {
-            if (_session == null)
-            {
-                Common.WriteLog($"Failed to get localchecks. Session is null, please restart.", "GetLocalChecks");
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey();
-                Environment.Exit(1);
-                return null;
-            }
-            var attempts = 0;
-            while (attempts++ < 5)
-            {
-                try
-                {
-                    return _session.DataStorage[Scope.Slot, "localchecks"].To<List<long>>();
-                }
-                catch (Exception ex)
-                {
-                    Common.WriteLog($"Failed to get localchecks: \"{ex.Message}\". Retrying in 5 seconds", "GetLocalChecks");
-                    await Task.Delay(5000);
-                }
-            }
-            // TODO: Change in-game strings
-            Common.WriteLog($"Failed to get localchecks. Data is desynced, please restart.", "GetLocalChecks");
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey();
-            Environment.Exit(1);
-
-            return null;
-        }
-        */
-
-
-        /* Old victory check, will remove eventually
-        public async Task CheckVictory()
-        {            
-            var localChecks = await GetLocalChecks();
-
-            int missions = 0;
-            int bonus = 0;
-            int wasps = 0;
-            int cards = 0;
-            int gags = 0;
-
-            foreach (long id in localChecks)
-            {
-                string type, name;
-                (type, name) = lt.getTypeAndNameByAPID(id);
-                if (type == null && (MemoryManip.cardIDs != null && MemoryManip.cardIDs.Contains(id)))
-                {
-                    type = "card";
-                    name = $"card{id}";
-                }
-
-                if (name != null && !name.Contains("Talk to"))
-                {
-                    switch (type)
-                    {
-                        case "mission":
-                            missions++;
-                            break;
-                        case "bonus missions":
-                            bonus++;
-                            break;
-                        case "wasp":
-                            wasps++;
-                            break;
-                        case "card":
-                            cards++;
-                            break;
-                        case "gag":
-                            gags++;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
-
-            mm?.UpdateProgress(missions, bonus, wasps, cards, gags, victory, waspPercent, cardPercent);
-
-            Common.WriteLog($"Completed:\nMissions: {missions}\nBonus Missions: {bonus}\nWasps: {wasps}\nCards: {cards}", "ArchipelagoClient::CheckVictory");
-
-            double wp = ((double)wasps / 140) * 100;
-            Common.WriteLog($"Wasps: {wp}%", "ArchipelagoClient::CheckVictory");
-
-            double cp = ((double)cards / 49) * 100;
-            Common.WriteLog($"Cards: {cp}%", "ArchipelagoClient::CheckVictory");
-
-            if (wp < waspPercent)
-                return;
-            if (cp < cardPercent)
-                return;
-
-            switch (victory)
-            {
-                case VICTORY.FinalMission:
-                    int fmcheck = await GetDataStorage<int>("finalmission");
-                    if (fmcheck == 1)
-                        SendCompletion();
-                    return;
-
-                case VICTORY.AllStory:
-                    if (missions >= 49)
-                        SendCompletion();
-                    return;
-
-                case VICTORY.AllMissions:
-                    if (missions >= 49 && bonus >= 28)
-                        SendCompletion();
-                    return;
-
-                case VICTORY.WaspsCards:
-                    SendCompletion();
-                    return;
-            }
-        }
-        */
     }
 }

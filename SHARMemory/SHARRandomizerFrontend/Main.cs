@@ -7,7 +7,7 @@ namespace SHARRandomizerFrontend
 {
     public partial class Main : Form
     {
-        string VERSION = "Beta 0.5.2";
+        string VERSION = "Beta 0.5.4";
         private ArchipelagoClient? _ac;
         private MemoryManip? _mm;
         private bool _connected;

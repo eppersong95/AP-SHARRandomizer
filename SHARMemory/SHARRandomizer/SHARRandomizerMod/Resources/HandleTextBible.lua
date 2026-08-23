@@ -79,7 +79,7 @@ for chunk in BibleChunk:GetChunks(P3D.Identifiers.Frontend_Language) do
 		
 		chunk:AddValue("APMaxCoins", "XXXXXXXXXXXXXXX")
 		
-		chunk:AddValue("APProgressTitle", "Goals:")
+		chunk:AddValue("APProgressTitle", "Goals:" .. string.rep(" ", 100))
 		chunk:AddValue("APProgress", "AP NOT LOADED" .. string.rep(" ", 475))
 
 		chunk:AddValue("APDefaultCar", "famil_v" .. string.rep(" ", 100))

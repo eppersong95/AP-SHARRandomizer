@@ -379,6 +379,8 @@ namespace SHARRandomizer
             bool success = true;
             int wasps = 0;
             int cards = 0;
+            List<int> levelsDone = new List<int>();
+            List<int> bonusDone = new List<int>();
 
             for (int i = 0; i < 7; i++)
             {
@@ -392,44 +394,81 @@ namespace SHARRandomizer
 
             if (wasps < ac.waspAmount || cards < ac.cardAmount)
                 success = false;
+            
+            int finBonus = 0;
+            int finRace = 0;
+            for (int i = 0; i < memory.Globals.LevelCount; i++)
+            {
+                bool ld = true;
+                if (ac.requiredLevels[i])
+                {
+                    if (ac.bonusRequired)
+                    {
+                        if (!record[i].BonusMission.Completed)
+                        {
+                            success = false;
+                            ld = false;
+                        }
+                        else
+                            finBonus++;
+                    }
 
-            if (goal == VICTORY.AllMissions || goal == VICTORY.AllStory)
+                    if (ac.raceRequired)
+                    {
+                        StreetRaceList races = record[i].StreetRaces;
+                        for (int j = 0; j < 3; j++)
+                        {
+                            if (!races.List[j].Completed)
+                            {
+                                success = false;
+                                ld = false;
+                            }
+                            else
+                                finRace++;
+                        }
+                    }
+
+                    if (ld)
+                        bonusDone.Add(i + 1);
+                }
+            }
+            
+            if (goal == VICTORY.AllMissions)
             {
                 int finMission = 0;
-                int finBonus = 0;
                 for (int i = 0; i < memory.Globals.LevelCount; i++)
                 {
+                    bool ld = true;
                     if (ac.requiredLevels[i])
                     {
                         MissionList missions = record[i].Missions;
                         int mNum = i == 0 ? 8 : 7;
-                        for (int j = 0; j < mNum; j++)
+                        int mStart = i == 0 ? 1 : 0;
+                        for (int j = mStart; j < mNum; j++)
                         {
                             if (!missions.List[j].Completed)
+                            {
                                 success = false;
+                                ld = false;
+                            }
                             else
                                 finMission++;
                         }
-
-                        if (goal == VICTORY.AllMissions)
+                        if (ld)
                         {
-                            if (!record[i].BonusMission.Completed)
-                                success = false;
-                            else
-                                finBonus++;
-
-                            StreetRaceList races = record[i].StreetRaces;
-                            for (int j = 0; j < 3; j++)
+                            if(ac.bonusRequired || ac.raceRequired)
                             {
-                                if (!races.List[j].Completed)
-                                    success = false;
-                                else
-                                    finBonus++;
+                                if(bonusDone.Contains(i+1))
+                                    levelsDone.Add(i + 1);
                             }
+                            else
+                                levelsDone.Add(i + 1);
                         }
+
                     }
                 }
-                UpdateProgress(finMission, finBonus, wasps, cards, 0, goal, ac.waspAmount, ac.cardAmount);
+
+                UpdateProgress(finMission, finBonus, finRace, wasps, cards, 0, goal, ac.waspAmount, ac.cardAmount, levelsDone);
             }
             else if (goal == VICTORY.Cars)
             {
@@ -473,18 +512,18 @@ namespace SHARRandomizer
                 if (carCount == 0)
                     carCount = 1;
 
-                UpdateProgress(0, 0, wasps, cards, carCount, goal, ac.waspAmount, ac.cardAmount, ac.carAmount);
+                UpdateProgress(0, finBonus, finRace, wasps, cards, carCount, goal, ac.waspAmount, ac.cardAmount, levelsDone, ac.carAmount);
             }
             else if (goal == VICTORY.FinalMission)
             {
                 if (!record[6].Missions.List[6].Completed)
                     success = false;
                 
-                UpdateProgress(0, 0, wasps, cards, 0, goal, ac.waspAmount, ac.cardAmount);
+                UpdateProgress(0, finBonus, finRace, wasps, cards, 0, goal, ac.waspAmount, ac.cardAmount, levelsDone);
             }
             else
             {
-                Common.WriteLog("Goal not found.", "CheckGoal");
+                Common.WriteLog($"Goal {goal} not found.", "CheckGoal");
                 return false;
             }
 
@@ -880,16 +919,18 @@ namespace SHARRandomizer
 
         void UpdateCoinDrops(Memory memory)
         {
-            //(WalletLevel * coinScale)
+            var scale = WalletLevel * coinScale;
             if (WalletLevel > 1)
             {
                 var hnr = memory.Singletons.HitNRunManager;
-                hnr.HitBreakableCoins = WalletLevel * coinScale;
-                hnr.HitKrustyGlassCoins = 5 * WalletLevel * coinScale;
-                hnr.HitMoveableCoins = WalletLevel * coinScale;
-                hnr.ColaPropDestroyedCoins = 10 * WalletLevel * coinScale;
+                hnr.HitBreakableCoins = scale;
+                hnr.HitKrustyGlassCoins = 5 * scale;
+                hnr.HitMoveableCoins = scale;
+                hnr.ColaPropDestroyedCoins = 10 * scale;
+                hnr.VehicleDestroyedCoins = 10 * scale;
+                memory.Globals.CoinsLostOnUserVehicleDestroyed = 20 * scale;
 
-                hnr.BustedCoins = 50 * WalletLevel * coinScale;
+                hnr.BustedCoins = 50 * scale;
             }
         }
 
@@ -1103,6 +1144,9 @@ namespace SHARRandomizer
                         for (int mission = 0; mission < 7; mission++)
                         {
                             string missionTitle = lt.getMissionName(mission, level, gameLanguage);
+                            if (ac.missionlocks.ContainsKey(level + 1) && ac.missionlocks[level + 1].ContainsKey(mission + 1))
+                                missionTitle += $" ({ac.missionlocks[level + 1][mission + 1]})";
+
                             name = $"MISSION_TITLE_L{level + 1}_M{mission + 1}";
                             Extensions.SetString(language, name, missionTitle.Trim());
                         }
@@ -1720,32 +1764,50 @@ namespace SHARRandomizer
                 await ac.IncrementDataStorage("bonus");*/
         }
 
-        public void UpdateProgress(int missions, int bonus, int wasps, int cards, int cars, ArchipelagoClient.VICTORY victory, int rw, int rc, int rcar = 0)
+        public void UpdateProgress(int missions, int bonus, int race, int wasps, int cards, int cars, ArchipelagoClient.VICTORY victory, int rw, int rc, List<int> levelsDone, int rcar = 0)
         {
-            string ret = "";
+            string goal = "Goal:\n";
+            string ret = "\n";
             int numLevels = ac.requiredLevels.Count(b => b);
+            bool isAllLevels = ac.requiredLevels.Length == 7 && ac.requiredLevels.All(x => x);
             List<int> reqLvls = ac.requiredLevels.Select((value, index) => new { value, index }).Where(x => x.value).Select(x => x.index + 1).ToList();
+            string reqLvlStr = "";
             int totMiss = numLevels * 7;
-            int totBon = numLevels * 4;
+            int totBon = numLevels; //mostly for consistency
+            int totRace = numLevels * 3;
+
+            if (levelsDone.Count > 0)
+            {
+                isAllLevels = false;
+                reqLvls.RemoveAll(x => levelsDone.Contains(x));
+            }
+
+            reqLvlStr = "Levels Left:\n" + (isAllLevels ? "All Levels" : string.Join(", ", reqLvls));
+
+            List<string> extraLines = new();
+            if (ac.bonusRequired)
+                extraLines.Add($"Bonus: {bonus:D2}/{totBon:D2}");
+            if (ac.raceRequired)
+                extraLines.Add($"Race: {race:D2}/{totRace:D2}");
+
+            List<string> collLines = new();
+            if (rw > 0)
+                collLines.Add($"Wasps: {wasps:D2}/{rw:D2}");
+            if (rc > 0)
+                collLines.Add($"Cards: {cards:D2}/{rc:D2}");
 
             switch (victory)
             {
                 case VICTORY.FinalMission:
-                    ret += "Final Mission\n";
-                    break;
-                case VICTORY.AllStory:
-                    ret += "Story Missions\n";
-                    ret += $"Required Levels:\n{string.Join(", ", reqLvls)}\n";
-                    ret += $"Missions: {missions:D2}/{totMiss}\n";
+                    goal += "L7M7\n";
                     break;
                 case VICTORY.AllMissions:
-                    ret = "All Missions\n";
-                    ret += $"Required Levels\n{string.Join(", ", reqLvls)}\n";
-                    ret += $"Missions: {missions:D2}/{totMiss}\n";
-                    ret += $"Bonus: { bonus:D2}/{totBon}\n";
+                    goal += "Missions\n";
+                    ret += $"{reqLvlStr}\n";
+                    ret += $"Story: {missions:D2}/{totMiss}\n";
                     break;
                 case VICTORY.Cars:
-                    ret += "Cars Collected:\n";
+                    goal += "Collect Cars:\n";
                     ret += $"Cars: {cars:D2}/{rcar}\n";
                     break;
                 default:
@@ -1753,13 +1815,24 @@ namespace SHARRandomizer
                     break;
             }
 
-            if (rw > 0)
-                ret += $"Wasps: {wasps:D2}/{rw:D2}\n";
-            if (rc > 0)
-                ret += $"Cards: {cards:D2}/{rc:D2}";
+            if (extraLines.Count > 0)
+            {
+                if (victory != VICTORY.AllMissions)
+                    ret += $"{reqLvlStr}\n";
+                ret += string.Join("\n", extraLines);
+            }
+
+            if (collLines.Count > 0)
+            {
+                ret += "\nCollectibles:\n";
+                ret += string.Join("\n", collLines);
+            }
 
             if (language != null)
+            {
+                Extensions.SetString(language, "APProgressTitle", goal);
                 Extensions.SetString(language, "APProgress", ret);
+            }
         }
 
         private void SetLevelOverTarget(SHARMemory.SHAR.Memory memory, byte level, byte mission)
@@ -2106,6 +2179,8 @@ namespace SHARRandomizer
                 Extensions.SetString(language, "APDefaultCar", car.Name);
             }
             */
+
+            UpdateCoinDrops(sender);
             return Task.CompletedTask;
         }
 

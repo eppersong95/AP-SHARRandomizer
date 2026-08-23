@@ -42,11 +42,12 @@ namespace SHARRandomizer.Classes
             }
             catch
             {
-                var len = tb.GetString(key).Length;
+                string s = tb.GetString(key);
+                var len = s.Length;
 
                 if (len <= 0)
                 {
-                    tb.SetString(key, ""); //the hell?
+                    tb.SetString(key, " "); //the hell?
                 }
                 else if (len < 3)
                 {
