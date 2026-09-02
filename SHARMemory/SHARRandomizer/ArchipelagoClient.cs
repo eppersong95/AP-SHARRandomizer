@@ -151,10 +151,6 @@ namespace SHARRandomizer
             };
         }
     
-        /// <summary>
-        /// Sends a death link to other players when a mission fails or vehicle is destroyed.
-        /// </summary>
-        /// <param name="cause">The reason for the death link (e.g., "Mission Failed" or "Vehicle Destroyed")</param>
         public void SendDeathLink(string cause = "")
         {
             try
@@ -319,7 +315,6 @@ namespace SHARRandomizer
                 }
                 catch (Exception ex)
                 {
-                    File.WriteAllText("./Oops.txt", ex.ToString());
                     Common.WriteLog(ex.ToString(), "test");
                     ex.ToString();
                 }
