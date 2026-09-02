@@ -2271,7 +2271,7 @@ namespace SHARRandomizer
                         if (shouldTriggerDeathLink)
                         {
                             Common.WriteLog($"Triggering death link from trigger: {trigger}", "MonitorDeathLinkTriggers");
-                            SendDeathLink(trigger.ToString());
+                            SendDeathLink(trigger);
                             continue;
                         }
                     }
@@ -2393,7 +2393,7 @@ namespace SHARRandomizer
             return shouldTriggerDeathLink;
         }
 
-        public void SendDeathLink(string cause)
+        public void SendDeathLink(DeathLinkTrigger trigger)
         {
             if (ShouldSuppressDeathLinkEvent())
             {
@@ -2401,10 +2401,9 @@ namespace SHARRandomizer
                 return;
             }
 
-            ac.SendMessage($"Death link triggered: {cause}");
+            Common.WriteLog($"{trigger} detected. Sending death link.", "SendDeathLink");
+            ac.SendDeathLink(trigger);
 
-            Common.WriteLog($"{cause} detected. Sending death link.", "SendDeathLink");
-            ac.SendDeathLink(cause);
             _lastDeathLinkEventTime = DateTime.UtcNow;
         }
 

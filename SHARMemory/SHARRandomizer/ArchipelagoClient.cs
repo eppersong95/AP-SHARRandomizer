@@ -16,6 +16,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using SHARRandomizer.Enums;
 
 
 namespace SHARRandomizer
@@ -151,7 +152,7 @@ namespace SHARRandomizer
             };
         }
     
-        public void SendDeathLink(string cause = "")
+        public void SendDeathLink(DeathLinkTrigger trigger)
         {
             try
             {
@@ -161,14 +162,25 @@ namespace SHARRandomizer
                     return;
                 }
 
-                var deathLink = new DeathLink(SLOTNAME, cause);
+                var deathLink = new DeathLink(SLOTNAME, GetCauseFromDeathLinkTrigger(trigger));
                 _deathLinkService.SendDeathLink(deathLink);
-                Common.WriteLog($"Death link sent: {cause}", "ArchipelagoClient::SendDeathLink");
+                Common.WriteLog($"Death link sent: {trigger}", "ArchipelagoClient::SendDeathLink");
             }
             catch (Exception ex)
             {
                 Common.WriteLog($"Error sending death link: {ex.Message}", "ArchipelagoClient::SendDeathLink");
             }
+        }
+
+        private string GetCauseFromDeathLinkTrigger(DeathLinkTrigger trigger)
+        {
+            return trigger switch
+            {
+                DeathLinkTrigger.VehicleDestroyed => $"{SLOTNAME} crashed & burned",
+                DeathLinkTrigger.MissionFailed => $"{SLOTNAME} encountered a skill issue",
+                DeathLinkTrigger.Busted => $"{SLOTNAME} can't stop busting!",
+                _ => ""
+            };
         }
 
         private async void TryConnect()
