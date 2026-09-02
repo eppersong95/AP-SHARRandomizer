@@ -4,6 +4,7 @@ using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Models;
 using Archipelago.MultiClient.Net.Packets;
+using Archipelago.MultiClient.Net.BounceFeatures.DeathLink;
 using Newtonsoft.Json.Linq;
 using SHARMemory.SHAR.Classes;
 using SHARRandomizer.Classes;
@@ -41,6 +42,7 @@ namespace SHARRandomizer
         public CancellationToken Token => _cts.Token;
 
         private ArchipelagoSession? _session;
+        private DeathLinkService? _deathLinkService;
 
         public string URI = "";
         public string SLOTNAME = "";
@@ -52,6 +54,7 @@ namespace SHARRandomizer
 
         public double timerMod;
         public bool levelLock = false;
+        public bool deathLink = false;
 
         public enum VICTORY
         {
@@ -128,6 +131,48 @@ namespace SHARRandomizer
             _session.Socket.SocketClosed += Session_SocketClosed;
             _session.Items.ItemReceived += Session_ItemReceived;
             _session.MessageLog.OnMessageReceived += Session_OnMessageReceived;
+        }
+
+        private async Task SetupDeathLinkService()
+        {
+            _deathLinkService = DeathLinkProvider.CreateDeathLinkService(_session);
+            _deathLinkService.EnableDeathLink();
+
+            _deathLinkService.OnDeathLinkReceived += async (deathLinkObject) =>
+            {
+                Common.WriteLog($"Death Link triggered by: {deathLinkObject.Source}", "ArchipelagoClient::DeathLinkReceived");
+
+                if (!string.IsNullOrEmpty(deathLinkObject.Cause))
+                {
+                    Common.WriteLog($"Reason: {deathLinkObject.Cause}", "ArchipelagoClient::DeathLinkReceived");   
+                }
+
+                await mm?.ProcessDeathLinkMessage();
+            };
+        }
+    
+        /// <summary>
+        /// Sends a death link to other players when a mission fails or vehicle is destroyed.
+        /// </summary>
+        /// <param name="cause">The reason for the death link (e.g., "Mission Failed" or "Vehicle Destroyed")</param>
+        public void SendDeathLink(string cause = "")
+        {
+            try
+            {
+                if (!Connected || _deathLinkService == null)
+                {
+                    Common.WriteLog($"Cannot send death link: Not connected or service not initialized", "ArchipelagoClient::SendDeathLink");
+                    return;
+                }
+
+                var deathLink = new DeathLink(SLOTNAME, cause);
+                _deathLinkService.SendDeathLink(deathLink);
+                Common.WriteLog($"Death link sent: {cause}", "ArchipelagoClient::SendDeathLink");
+            }
+            catch (Exception ex)
+            {
+                Common.WriteLog($"Error sending death link: {ex.Message}", "ArchipelagoClient::SendDeathLink");
+            }
         }
 
         private async void TryConnect()
@@ -212,6 +257,12 @@ namespace SHARRandomizer
                     levelLock = Convert.ToBoolean(login.SlotData["Lock_Levels"]);
                     bonusRequired = Convert.ToBoolean(login.SlotData["Bonus_Mission_Required"]);
                     raceRequired = Convert.ToBoolean(login.SlotData["Race_Mission_Required"]);
+                    deathLink = true;//Convert.ToBoolean(login.SlotData["death_link"]);
+
+                    if (deathLink)
+                    {
+                        await SetupDeathLinkService();
+                    }
 
                     var ingameHints = login.SlotData["ingamehints"];
 
@@ -268,6 +319,7 @@ namespace SHARRandomizer
                 }
                 catch (Exception ex)
                 {
+                    File.WriteAllText("./Oops.txt", ex.ToString());
                     Common.WriteLog(ex.ToString(), "test");
                     ex.ToString();
                 }

@@ -5,6 +5,7 @@ using SHARMemory.SHAR.Classes;
 using SHARMemory.SHAR.Events.GameplayManager;
 using SHARMemory.SHAR.Events.RewardsManager;
 using SHARMemory.SHAR.Structs;
+using SHARMissionClass = SHARMemory.SHAR.Classes.Mission;
 using SHARRandomizer.Classes;
 using System;
 using System.Diagnostics;
@@ -13,9 +14,10 @@ using System.Reflection.Emit;
 using System.Threading;
 using static LocationTranslations;
 using static SHARRandomizer.ArchipelagoClient;
+using SHARRandomizer.Enums;
 
 namespace SHARRandomizer
-{ 
+{
     public class MemoryManip
     {
         Process? p;
@@ -80,10 +82,20 @@ namespace SHARRandomizer
         public bool restored = false;
         System.Numerics.Vector3 lCoords = new System.Numerics.Vector3(1000, 0, 1000);
 
+        // Death link tracking fields
+        private MissionModel _previousMission {get;set;}
+        private bool _lastPlayerVehicleDestroyed = false;
+        private bool _isInComingDeathLinkQueued {get;set;} = false;
+        private bool _isProcessingIncomingDeathLink {get;set;} = false;
+        private DateTime _lastDeathLinkEventTime {get;set;} = DateTime.MinValue;
+        private bool _lastChaseOn {get;set;} = false;
+        private float _lastTicketTimer {get;set;}
+
         uint gameLanguage;
         private Watcher? _watcher;
         private TrapHandler _trapHandler;
         private TrapWatcher _trapWatcher;
+        private Memory? _currentMemory;
 
         private (int, int) LevelOverTarget = (0, 0);
 
@@ -111,6 +123,7 @@ namespace SHARRandomizer
 
                 Common.WriteLog("AP Connected. Initialising memory manager...", "MemoryStart");
                 Memory memory = new(p);
+                _currentMemory = memory;
                 Common.WriteLog($"SHAR memory manager initialised. Game version detected: {memory.GameVersion}. Sub Version: {memory.GameSubVersion}.", "MemoryStart");
                 string mod = memory.GetMainMod() ?? "No Mod";
                 Common.WriteLog($"Main Mod: {mod}", "MemoryStart");
@@ -119,7 +132,7 @@ namespace SHARRandomizer
                     Common.WriteLog($"Main Mod should be APSHARRandomizer, detected {mod}. Exiting.", "MemoryStart");
                     Environment.Exit(1);
                 }
-           
+
 
                 var state = memory.Singletons.GameFlow?.CurrentContext;
                 while (state == null || state == GameFlow.GameState.PreLicence || state == GameFlow.GameState.Licence)
@@ -152,7 +165,7 @@ namespace SHARRandomizer
                 watcher.InGameWindowChanged += Watcher_InGameWindowChanged;
                 watcher.CurrentEventChanged += Watcher_CurrentEventChanged;
                 watcher.LevelChanged += Watcher_LevelChanged;
-                
+
 
                 var trapWatcher = new TrapWatcher();
                 _trapWatcher = trapWatcher;
@@ -199,10 +212,10 @@ namespace SHARRandomizer
 
             var checks = ac.GetCheckedLocations();
             Extensions.SetString(textBible, "NEW_GAME",
-                uit.GetUITranslation(
-                    checks.Count == 0 ? "NewGame" : "ResumeGame",
-                    gameLanguage
-            ));
+                                 uit.GetUITranslation(
+                                     checks.Count == 0 ? "NewGame" : "ResumeGame",
+                                     gameLanguage
+                                 ));
 
             Common.WriteLog("Waiting till gameplay starts.", "InitialGameState");
 
@@ -257,7 +270,7 @@ namespace SHARRandomizer
                     }
                 }
                 REWARDS.AddRange(tempRewards);
-                
+
             }
 
             InputListener listener = new(memory);
@@ -352,13 +365,13 @@ namespace SHARRandomizer
                 try
                 {
                     await UpdateData(memory);
-                }
-                catch (Exception ex)
-                {
-                    Common.WriteLog($"{ex}", "UpdateData");
-                }
-            });
-            */
+        }
+        catch (Exception ex)
+        {
+        Common.WriteLog($"{ex}", "UpdateData");
+        }
+        });
+        */
             _ = Task.Run(async () =>
             {
                 try
@@ -370,6 +383,33 @@ namespace SHARRandomizer
                     Common.WriteLog($"{ex}", "CardRadar");
                 }
             });
+
+            if (ac.deathLink)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await MonitorDeathLinkTriggers(memory);
+                    }
+                    catch (Exception ex)
+                    {
+                        Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
+                    }
+                });
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await MonitorQueuedDeathLinks(memory);
+                    }
+                    catch (Exception ex)
+                    {
+                        Common.WriteLog($"{ex}", "MonitorDeathLinkTriggers");
+                    }
+                });
+            }
         }
 
         bool CheckTicketRequirements(Memory memory, CharacterSheetManager characterSheet)
@@ -563,7 +603,7 @@ namespace SHARRandomizer
             Common.WriteLog($"Restoring coins to {characterSheet.CharacterSheet.Coins}", "LoadState");
             List<long> locations = ac.GetCheckedLocations(); //collected checks get restored
             //await ac.GetDataStorage<List<long>>("localchecks"); //collected checks don't get restored (maybe option eventually)
-            
+
             /* get struct from characterSheet.LevelList.ToArray() to update below */
             LevelRecord[] record = characterSheet.CharacterSheet.LevelList.ToArray();
             int[] waspCounters = new int[7];
@@ -593,84 +633,84 @@ namespace SHARRandomizer
                 switch (check.type)
                 {
                     case "mission":
-                        {
-                            int mission;
-                            int.TryParse(id[0].ToString(), out level);
-                            int.TryParse(id[4].ToString(), out mission);
+                    {
+                        int mission;
+                        int.TryParse(id[0].ToString(), out level);
+                        int.TryParse(id[4].ToString(), out mission);
 
-                            MissionList missions = record[level].Missions;
-                            missions.List[mission - 1].Completed = true;
-                            break;
-                        }
+                        MissionList missions = record[level].Missions;
+                        missions.List[mission - 1].Completed = true;
+                        break;
+                    }
                     case "bonus missions":
+                    {
+                        int.TryParse(id[0].ToString(), out level);
+                        if (id.EndsWith("bonus"))
                         {
-                            int.TryParse(id[0].ToString(), out level);
-                            if (id.EndsWith("bonus"))
-                            {
-                                record[level].BonusMission.Completed = true;
-                            }
-                            else
-                            {
-                                int race;
-                                int.TryParse(id[4].ToString(), out race);
-
-                                StreetRaceList races = record[level].StreetRaces;
-                                races.List[race].Completed = true;
-                            }
-                            break;
+                            record[level].BonusMission.Completed = true;
                         }
+                        else
+                        {
+                            int race;
+                            int.TryParse(id[4].ToString(), out race);
+
+                            StreetRaceList races = record[level].StreetRaces;
+                            races.List[race].Completed = true;
+                        }
+                        break;
+                    }
                     case "wasp":
+                    {
+                        var parts = id.Split(" - ");
+                        if (parts.Length == 2 && Enum.TryParse(parts[0], out CharacterSheet.PersistentObjectStateSector sector) && int.TryParse(parts[1], out int index))
                         {
-                            var parts = id.Split(" - ");
-                            if (parts.Length == 2 && Enum.TryParse(parts[0], out CharacterSheet.PersistentObjectStateSector sector) && int.TryParse(parts[1], out int index))
-                            {
-                                characterSheet.CharacterSheet.SetPersistentObjectDestroyed(sector, index, true);
-                                waspCounters[(int)sector - 75]++;
-                            }
-                            else
-                                Common.WriteLog($"Invalid wasp ID format: {id}", "LoadState");
-                            break;
+                            characterSheet.CharacterSheet.SetPersistentObjectDestroyed(sector, index, true);
+                            waspCounters[(int)sector - 75]++;
                         }
+                        else
+                            Common.WriteLog($"Invalid wasp ID format: {id}", "LoadState");
+                        break;
+                    }
                     case "card":
+                    {
+                        if (cardIDs == null)
                         {
-                            if (cardIDs == null)
-                            {
-                                Common.WriteLog($"{nameof(cardIDs)} is null.", "LoadState");
-                                break;
-                            }
-                            int index = cardIDs.IndexOf(l);
-                            level = (index / 7) + 1;
-                            int card = (index % 7) + 1;
-
-                            CharCardList cards = record[level - 1].Cards;
-                            cards.List[card - 1].Completed = true;
-                            cards.List[card - 1].Name = $"card{level}{card}";
-                            record[level - 1].Cards = cards;
-
+                            Common.WriteLog($"{nameof(cardIDs)} is null.", "LoadState");
                             break;
                         }
+                        int index = cardIDs.IndexOf(l);
+                        level = (index / 7) + 1;
+                        int card = (index % 7) + 1;
+
+                        CharCardList cards = record[level - 1].Cards;
+                        cards.List[card - 1].Completed = true;
+                        cards.List[card - 1].Name = $"card{level}{card}";
+                        record[level - 1].Cards = cards;
+
+                        break;
+                    }
                     case "gag":
+                    {
+                        if (!int.TryParse(id[0].ToString(), out level))
                         {
-                            if (!int.TryParse(id[0].ToString(), out level))
-                            {
-                                Common.WriteLog($"Invalid gag ID format: {id}", "LoadState");
-                                break;
-                            }
-                            if (!int.TryParse(id[4].ToString(), out var gag))
-                            {
-                                Common.WriteLog($"Invalid gag ID format: {id}", "LoadState");
-                                break;
-                            }
+                            Common.WriteLog($"Invalid gag ID format: {id}", "LoadState");
+                            break;
+                        }
+                        if (!int.TryParse(id[4].ToString(), out var gag))
+                        {
+                            Common.WriteLog($"Invalid gag ID format: {id}", "LoadState");
+                            break;
+                        }
 
-                            gagmask[level] |= (uint)1 << gag;
-                            gagCounters[level]++;
-                            break;
-                        }
+                        gagmask[level] |= (uint)1 << gag;
+                        gagCounters[level]++;
+                        break;
+                    }
                     case "shop":
-                        {
-                            purchased.Add(id);
-                            break;
-                        }
+                    {
+                        purchased.Add(id);
+                        break;
+                    }
                     default:
                         break;
 
@@ -723,7 +763,7 @@ namespace SHARRandomizer
             var cardGallery = mem.Singletons.CardGallery;
             if (cardGallery == null)
                 return;
-            
+
             var cardsDB = cardGallery.CardsDB;
             if (cardsDB == null)
                 return;
@@ -871,31 +911,31 @@ namespace SHARRandomizer
                                 Common.WriteLog($"Received {s}.", "GetItems");
                                 break;
 
-                            case string s when traps.Contains(s):
-                                Common.WriteLog($"Received TRAP {s}.", "GetItems");
-                                _trapWatcher.OnTrapDetected(s);
-                                break;
+                                        case string s when traps.Contains(s):
+                                            Common.WriteLog($"Received TRAP {s}.", "GetItems");
+                                            _trapWatcher.OnTrapDetected(s);
+                                            break;
 
-                            case string s when s.Contains("Jump") || s.Contains("Attack") || s.Contains("Brake") || s.Contains("Forward") ||
-                                                s.Contains("Gagfinder") || s.Contains("Checkered Flag") || s.Contains("Frink-o-Matic Wasp Bumper"):
-                                Common.WriteLog($"Received {s}", "GetItems");
-                                moves.Add(s);
-                                CheckAvailableMoves(memory, CURRENTLEVEL);
-                                HandleCurrentRaces(memory);
-                                //CheckGags(memory);
-                                break;
+                                            case string s when s.Contains("Jump") || s.Contains("Attack") || s.Contains("Brake") || s.Contains("Forward") ||
+                                            s.Contains("Gagfinder") || s.Contains("Checkered Flag") || s.Contains("Frink-o-Matic Wasp Bumper"):
+                                            Common.WriteLog($"Received {s}", "GetItems");
+                                            moves.Add(s);
+                                            CheckAvailableMoves(memory, CURRENTLEVEL);
+                                            HandleCurrentRaces(memory);
+                                            //CheckGags(memory);
+                                            break;
 
-                            case string s when s.Contains("Wallet"):
-                                Common.WriteLog($"Received {s}", "GetItems");
-                                WalletLevel++;
-                                int coincap = WalletLevel == 1 ? maxCoins : maxCoins * WalletLevel * coinScale;
-                                Extensions.SetString(language, "APMaxCoins", (WalletLevel >= 7 ? " " : $"/{coincap.ToString()}"));
-                                UpdateCoinDrops(memory);                                    
-                                break;
+                                        case string s when s.Contains("Wallet"):
+                                            Common.WriteLog($"Received {s}", "GetItems");
+                                            WalletLevel++;
+                                            int coincap = WalletLevel == 1 ? maxCoins : maxCoins * WalletLevel * coinScale;
+                                            Extensions.SetString(language, "APMaxCoins", (WalletLevel >= 7 ? " " : $"/{coincap.ToString()}"));
+                                            UpdateCoinDrops(memory);
+                                            break;
 
-                            default:
-                                Common.WriteLog($"Error unlocking reward: {item}.", "GetItems");
-                                break;
+                                        default:
+                                            Common.WriteLog($"Error unlocking reward: {item}.", "GetItems");
+                                            break;
                         }
                     }
                 }
@@ -919,7 +959,7 @@ namespace SHARRandomizer
 
         void UpdateCoinDrops(Memory memory)
         {
-            var scale = WalletLevel * coinScale;
+           var scale = WalletLevel * coinScale;
             if (WalletLevel > 1)
             {
                 var hnr = memory.Singletons.HitNRunManager;
@@ -941,7 +981,7 @@ namespace SHARRandomizer
 
             int? level = (int)missionManager.LevelData.Level;
             int? mission = missionManager.GetCurrentMissionIndex();
-            
+
             if (!level.HasValue || !mission.HasValue)
                 return false;
 
@@ -986,9 +1026,9 @@ namespace SHARRandomizer
             if (!UnlockedLevels.Contains($"Level {level + 1}")) // Skip if item not received
                 return false;
 
-            var objective = (stage ?? missionManager.GetCurrentMission()?.GetCurrentStage())?.Objective;
-            if (objective?.ObjectiveType != MissionObjective.ObjectiveTypes.Invalid)
-                return false;
+                var objective = (stage ?? missionManager.GetCurrentMission()?.GetCurrentStage())?.Objective;
+                if (objective?.ObjectiveType != MissionObjective.ObjectiveTypes.Invalid)
+                    return false;
 
             objective.Finished = true;
             Common.WriteLog($"Skipped dummy objective for L{level + 1}SD{index + 1}", "UnlockCurrentMission");
@@ -1003,7 +1043,7 @@ namespace SHARRandomizer
                 level = $"Level {nextLevel}";
             }
             UnlockedLevels.Add(level);
-            
+
             UpdateMissionTitles();
 
             return true;
@@ -1019,43 +1059,43 @@ namespace SHARRandomizer
             if (UnlockedLevels.Contains($"Level {level + 1}")) // Skip if level item already received
                 unlocked = true;
 
-            foreach (var bonusMissionInfo in missionManager.BonusMissions)
-            {
-                if (bonusMissionInfo.MissionNum < 0) continue; // Avoids empty bonus mission slots
-
-                var bonusMission = missions[bonusMissionInfo.MissionNum];
-                List<string> bms = ["bm1", "bm2"];
-
-                if (!bms.Contains(bonusMission.Name))
-                    continue;
-
-                if (unlocked)
+                foreach (var bonusMissionInfo in missionManager.BonusMissions)
                 {
-                    Common.WriteLog($"Unlocking {bonusMission.Name}", "HandleCurrentBonusMissions");
-                    bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.Active;
-                    if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
+                    if (bonusMissionInfo.MissionNum < 0) continue; // Avoids empty bonus mission slots
+
+                    var bonusMission = missions[bonusMissionInfo.MissionNum];
+                    List<string> bms = ["bm1", "bm2"];
+
+                    if (!bms.Contains(bonusMission.Name))
+                        continue;
+
+                    if (unlocked)
                     {
-                        foreach (var element in compositeDrawable.Elements)
+                        Common.WriteLog($"Unlocking {bonusMission.Name}", "HandleCurrentBonusMissions");
+                        bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.Active;
+                        if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
                         {
-                            element.Visible = true;
+                            foreach (var element in compositeDrawable.Elements)
+                            {
+                                element.Visible = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Common.WriteLog($"Locking {bonusMission.Name}", "HandleCurrentBonusMissions");
+                        bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.None;
+                        if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
+                        {
+                            foreach (var element in compositeDrawable.Elements)
+                            {
+                                element.Visible = false;
+                            }
                         }
                     }
                 }
-                else
-                {
-                    Common.WriteLog($"Locking {bonusMission.Name}", "HandleCurrentBonusMissions");
-                    bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.None;
-                    if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
-                    {
-                        foreach (var element in compositeDrawable.Elements)
-                        {
-                            element.Visible = false;
-                        }
-                    }
-                }
-            }
 
-            return true;
+                return true;
         }
 
         bool HandleCurrentRaces(Memory memory)
@@ -1082,43 +1122,43 @@ namespace SHARRandomizer
                 || (checkeredflag && moves.Contains($"{character} Checkered Flag")))
                 unlocked = true;
 
-            foreach (var bonusMissionInfo in missionManager.BonusMissions)
-            {
-                if (bonusMissionInfo.MissionNum < 0) continue; 
-
-                var bonusMission = missions[bonusMissionInfo.MissionNum];
-                List<string> bms = ["sr1", "sr2", "sr3"];
-
-                if (!bms.Contains(bonusMission.Name))
-                    continue;
-
-                if (unlocked)
+                foreach (var bonusMissionInfo in missionManager.BonusMissions)
                 {
-                    Common.WriteLog($"Unlocking {bonusMission.Name}", "HandleCurrentBonusMissions");
-                    bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.Active;
-                    if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
+                    if (bonusMissionInfo.MissionNum < 0) continue;
+
+                    var bonusMission = missions[bonusMissionInfo.MissionNum];
+                    List<string> bms = ["sr1", "sr2", "sr3"];
+
+                    if (!bms.Contains(bonusMission.Name))
+                        continue;
+
+                    if (unlocked)
                     {
-                        foreach (var element in compositeDrawable.Elements)
+                        Common.WriteLog($"Unlocking {bonusMission.Name}", "HandleCurrentBonusMissions");
+                        bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.Active;
+                        if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
                         {
-                            element.Visible = true;
+                            foreach (var element in compositeDrawable.Elements)
+                            {
+                                element.Visible = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Common.WriteLog($"Locking {bonusMission.Name}", "HandleCurrentBonusMissions");
+                        bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.None;
+                        if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
+                        {
+                            foreach  (var element in compositeDrawable.Elements)
+                            {
+                                element.Visible = false;
+                            }
                         }
                     }
                 }
-                else
-                {
-                    Common.WriteLog($"Locking {bonusMission.Name}", "HandleCurrentBonusMissions");
-                    bonusMissionInfo.EventLocator.Flags = Locator.LocatorFlags.None;
-                    if (bonusMissionInfo.Icon?.DSGEntity?.Drawstuff is tCompositeDrawable compositeDrawable)
-                    {
-                        foreach  (var element in compositeDrawable.Elements)
-                        {
-                            element.Visible = false;
-                        }
-                    }
-                }
-            }
 
-            return true;
+                return true;
         }
 
         void UpdateMissionTitles()
@@ -1285,13 +1325,13 @@ namespace SHARRandomizer
 
             if (!moves.Contains($"{character} Attack"))
                 memory.Singletons.InputManager.ControllerArray[0].DisableButton(InputManager.Buttons.Attack);
-            else
-                memory.Singletons.InputManager.ControllerArray[0].EnableButton(InputManager.Buttons.Attack);
+                else
+                    memory.Singletons.InputManager.ControllerArray[0].EnableButton(InputManager.Buttons.Attack);
 
             if (!moves.Contains($"{character} Progressive Jump"))
                 memory.Singletons.InputManager.ControllerArray[0].DisableButton(InputManager.Buttons.Jump);
-            else
-                memory.Singletons.InputManager.ControllerArray[0].EnableButton(InputManager.Buttons.Jump);
+                else
+                    memory.Singletons.InputManager.ControllerArray[0].EnableButton(InputManager.Buttons.Jump);
 
             if (!moves.Contains($"{character} Forward"))
             {
@@ -1352,7 +1392,7 @@ namespace SHARRandomizer
                 if (memory.InGame())
                 {
                     //Commented out in case we need to check car speed again for debugging later.
-                    //Common.WriteLog(memory.Singletons.CharacterManager?.Player?.Car?.Speed.ToString()); 
+                    //Common.WriteLog(memory.Singletons.CharacterManager?.Player?.Car?.Speed.ToString());
                     if (DISABLEEBRAKE && memory.Singletons.CharacterManager?.Player?.Car?.Speed >= 1)
                         memory.Singletons.InputManager.ControllerArray[0].DisableButton(InputManager.Buttons.GetOutCar);
                     else
@@ -1478,7 +1518,7 @@ namespace SHARRandomizer
 
                     if (memory.Singletons.InteriorManager is not InteriorManager interiorManager)
                         break;
-                    
+
                     int? level = (int)missionManager.LevelData.Level;
                     string character = "";
 
@@ -1529,8 +1569,8 @@ namespace SHARRandomizer
                 await Task.Delay(30000);
             }
         }
-        */
-       
+    */
+
 
         async Task CardRadar(Memory memory)
         {
@@ -1543,7 +1583,7 @@ namespace SHARRandomizer
             }
             LevelRecord[] record = characterSheet.CharacterSheet.LevelList.ToArray();
 
-            
+
             while (memory.IsRunning)
             {
 
@@ -1673,7 +1713,7 @@ namespace SHARRandomizer
             Common.WriteLog($"Sending {location}", "SendLocation");
 
             return Task.CompletedTask;
-        } 
+        }
 
         async Task Watcher_CardCollected(SHARMemory.SHAR.Memory sender, SHARMemory.SHAR.Events.CardGallery.CardCollectedEventArgs e, CancellationToken token)
         {
@@ -1840,10 +1880,10 @@ namespace SHARRandomizer
             Common.WriteLog($"{level} : {mission}", "SetLevelOverTarget");
             LevelOverTarget = (level, mission);
             memory.WriteBytes(memory.SelectAddress(0x482A4B, 0x4828DB, 0x4827AB, 0x48256B),
-                [
-                    0x6A, mission, // PUSH mission
-                    0x6A, level    // PUSH level
-                ]);
+                              [
+                                  0x6A, mission, // PUSH mission
+                              0x6A, level    // PUSH level
+                              ]);
         }
 
         Task Watcher_DialogPlaying(SHARMemory.SHAR.Memory sender, SHARMemory.SHAR.Events.SoundManager.DialogPlayingEventArgs e, CancellationToken token)
@@ -1885,7 +1925,7 @@ namespace SHARRandomizer
                 [
                     0x90, 0x90
                 ]);Wr
-                */
+                 */
 
                 var mission = missionManager.GetCurrentMission();
                 switch (characterName)
@@ -1930,7 +1970,7 @@ namespace SHARRandomizer
                 var objective = missionManager.Missions[0].GetCurrentStage()?.Objective;
                 if (objective != null)
                     objective.Finished = true;
-                */
+                 */
                 return Task.CompletedTask;
             }
 
@@ -1942,9 +1982,9 @@ namespace SHARRandomizer
             if ((int?)e.NewLevel == 0 && (int?)e.NewMission == 0)
             {
                 sender.WriteBytes(sender.SelectAddress(0x47EDB5, 0x47EC35, 0x47EB05, 0x47E8C5),
-                 [
-                     0x74, 0x38
-                 ]);
+                                  [
+                                      0x74, 0x38
+                                  ]);
             }
             return Task.CompletedTask;
         }
@@ -1984,7 +2024,7 @@ namespace SHARRandomizer
             return Task.CompletedTask;
         }
 
-        private Task Watcher_NewTrafficVehicle(SHARMemory.SHAR.Memory sender, SHARMemory.SHAR.Events.TrafficManager.NewTrafficVehicleEventArgs e, CancellationToken token) 
+        private Task Watcher_NewTrafficVehicle(SHARMemory.SHAR.Memory sender, SHARMemory.SHAR.Events.TrafficManager.NewTrafficVehicleEventArgs e, CancellationToken token)
         {
             var vehicle = e.Vehicle;
 
@@ -2029,98 +2069,98 @@ namespace SHARRandomizer
                 case CGuiManager.WindowID.PhoneBooth:
                     if (e.NewWindow is not CGuiScreenPhoneBooth guiScreenPhoneBooth)
                         break;
-                    /*
-                    Common.WriteLog($"Entered phonebooth: {guiScreenPhoneBooth.NumPreviewVehicles} preview vehicles", "InGameWindowChanged_Phonebooth");
+                /*
+                Common.WriteLog($"Entered phonebooth: {guiScreenPhoneBooth.NumPreviewVehicles} preview vehicles", "InGameWindowChanged_Phonebooth");
 
-                    var previewVehicles = guiScreenPhoneBooth.PreviewVehicles;
-                    var vehicles = previewVehicles.ToArray().OrderByDescending(x => x.Name);
-                    Common.WriteLog(vehicles.ToArray()[0].Reward., "phone");
-                    previewVehicles.FromArray(vehicles.ToArray());
-                    guiScreenPhoneBooth.CurrentPreviewVehicle = 0;
-                    */
+                var previewVehicles = guiScreenPhoneBooth.PreviewVehicles;
+                var vehicles = previewVehicles.ToArray().OrderByDescending(x => x.Name);
+                Common.WriteLog(vehicles.ToArray()[0].Reward., "phone");
+                previewVehicles.FromArray(vehicles.ToArray());
+                guiScreenPhoneBooth.CurrentPreviewVehicle = 0;
+                 */
 
-                    break;
+                break;
                 case CGuiManager.WindowID.PurchaseRewards:
                     if (e.NewWindow is not CGuiScreenPurchaseRewards guiScreenPurchaseRewards)
                         break;
-                    if (guiScreenPurchaseRewards.CurrentType.ToString() == "Interior")
-                    {
-                        //if (guiScreenPurchaseRewards.RewardPrice is FeDrawable rewardPrice)
-                        //    rewardPrice.Visible = false;
+                if (guiScreenPurchaseRewards.CurrentType.ToString() == "Interior")
+                {
+                    //if (guiScreenPurchaseRewards.RewardPrice is FeDrawable rewardPrice)
+                    //    rewardPrice.Visible = false;
 
-                        Extensions.SetString(textBible, "COINS", " ");
-                        Extensions.SetString(textBible, "TO_PURCHASE", "LOCKED");
-                    }
+                    Extensions.SetString(textBible, "COINS", " ");
+                    Extensions.SetString(textBible, "TO_PURCHASE", "LOCKED");
+                }
 
-                    break;
+                break;
                 case CGuiManager.WindowID.MissionSelect:
                     if (e.NewWindow is not CGuiScreenMissionSelect missionSelect)
                         break;
-                    UpdateMissionTitles();
+                UpdateMissionTitles();
 
-                    if (!ac.levelLock)
-                        break;
-
-                    if (_ingameWindowCTS != null)
-                        break;
-
-                    bool[][] lockedLevels = new bool[7][];
-                    for (int level = 0; level < 7; level++)
-                    {
-                        lockedLevels[level] = new bool[7];
-                        if(!UnlockedLevels.Contains($"Level {level + 1}"))
-                            Array.Fill(lockedLevels[level], true);
-                    }
-
-
-                    lock (_ingameWindowLock)
-                    {
-                        _ingameWindowCTS = new();
-                        var windowToken = _ingameWindowCTS.Token;
-
-                        Task.Run(async () =>
-                        {
-                            while (!windowToken.IsCancellationRequested)
-                            {
-                                try
-                                {
-                                    var menuLevel = missionSelect.MenuLevel;
-                                    if (menuLevel == null)
-                                        continue;
-
-                                    var levelText = (SHARMemory.SHAR.Classes.GuiMenuItemText)menuLevel.MenuItems[0];
-                                    var level = levelText.Item.Index;
-
-                                    var menu = missionSelect.Menu;
-
-                                    var menuItems = menu.MenuItems.ToArray();
-                                    for (int i = 0; i < menu.NumItems; i++)
-                                    {
-                                        var menuItem = (SHARMemory.SHAR.Classes.GuiMenuItemText)menuItems[i];
-                                        var item = menuItem.Item;
-                                        if (lockedLevels[level][i])
-                                        {
-                                            menuItem.Attributes &= ~(SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.SelectionEnabled | SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.Selectable);
-                                            item.Colour = SHARMemory.SHAR.Classes.CGuiMenu.DEFAULT_DISABLED_ITEM_COLOUR;
-                                        }
-                                        else
-                                        {
-                                            menuItem.Attributes |= SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.SelectionEnabled | SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.Selectable;
-                                            if (item.Colour == SHARMemory.SHAR.Classes.CGuiMenu.DEFAULT_DISABLED_ITEM_COLOUR)
-                                                item.Colour = menuItem.DefaultColour;
-                                        }
-                                    }
-
-                                    await Task.Delay(10, windowToken);
-                                }
-                                catch (TaskCanceledException)
-                                {
-                                    // Exited mission select
-                                }
-                            }
-                        }, windowToken);
-                    }
+                if (!ac.levelLock)
                     break;
+
+                if (_ingameWindowCTS != null)
+                    break;
+
+                bool[][] lockedLevels = new bool[7][];
+                for (int level = 0; level < 7; level++)
+                {
+                    lockedLevels[level] = new bool[7];
+                    if(!UnlockedLevels.Contains($"Level {level + 1}"))
+                        Array.Fill(lockedLevels[level], true);
+                }
+
+
+                lock (_ingameWindowLock)
+                {
+                    _ingameWindowCTS = new();
+                    var windowToken = _ingameWindowCTS.Token;
+
+                    Task.Run(async () =>
+                    {
+                        while (!windowToken.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                var menuLevel = missionSelect.MenuLevel;
+                                if (menuLevel == null)
+                                    continue;
+
+                                var levelText = (SHARMemory.SHAR.Classes.GuiMenuItemText)menuLevel.MenuItems[0];
+                                var level = levelText.Item.Index;
+
+                                var menu = missionSelect.Menu;
+
+                                var menuItems = menu.MenuItems.ToArray();
+                                for (int i = 0; i < menu.NumItems; i++)
+                                {
+                                    var menuItem = (SHARMemory.SHAR.Classes.GuiMenuItemText)menuItems[i];
+                                    var item = menuItem.Item;
+                                    if (lockedLevels[level][i])
+                                    {
+                                        menuItem.Attributes &= ~(SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.SelectionEnabled | SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.Selectable);
+                                        item.Colour = SHARMemory.SHAR.Classes.CGuiMenu.DEFAULT_DISABLED_ITEM_COLOUR;
+                                    }
+                                    else
+                                    {
+                                        menuItem.Attributes |= SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.SelectionEnabled | SHARMemory.SHAR.Classes.GuiMenuItem.Attribute.Selectable;
+                                        if (item.Colour == SHARMemory.SHAR.Classes.CGuiMenu.DEFAULT_DISABLED_ITEM_COLOUR)
+                                            item.Colour = menuItem.DefaultColour;
+                                    }
+                                }
+
+                                await Task.Delay(10, windowToken);
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                // Exited mission select
+                            }
+                        }
+                    }, windowToken);
+                }
+                break;
                 case CGuiManager.WindowID.LevelEnd:
                     sender.WriteBytes(sender.SelectAddress(0x47EDB5, 0x47EC35, 0x47EB05, 0x47E8C5), [0x90, 0x90]);
                     sender.WriteBytes(sender.SelectAddress(0x482A4B, 0x4828DB, 0x4827AB, 0x48256B), [0x6A, 0, 0x6A, 0]);
@@ -2140,7 +2180,7 @@ namespace SHARRandomizer
                 case CGuiManager.WindowID.MissionSelect:
                     for (int i = 1; i < 8; i++)
                         Extensions.SetString(textBible, $"LEVEL_{i}", $"                    Level {i}");
-                    break;
+                break;
             }
 
             return Task.CompletedTask;
@@ -2188,6 +2228,317 @@ namespace SHARRandomizer
         {
             Extensions.SetString(language, "APProgress", "Disconnected.");
             Extensions.SetString(language, "APLog", "Disconnected.");
+        }
+
+        private async Task MonitorQueuedDeathLinks(Memory memory)
+        {
+            while (!memory.Process.HasExited)
+            {
+                try
+                {
+                    if (_isInComingDeathLinkQueued)
+                    {
+                        _isInComingDeathLinkQueued = false;
+                        await ProcessDeathLinkMessage();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Common.WriteLog($"Error processing queued death link: {ex}", "MonitorQueuedDeathLinks");
+                }
+
+                await Task.Delay(500, Token);
+            }
+        }
+
+        private async Task MonitorDeathLinkTriggers(Memory memory)
+        {
+            while (!memory.Process.HasExited)
+            {
+                try
+                {
+                    if (!Extensions.InGame(memory))
+                    {
+                        await Task.Delay(10, Token);
+                        continue;
+                    }
+
+                    foreach (var trigger in Enum.GetValues<DeathLinkTrigger>())
+                    {
+                        var triggerCheck = GetMethodForTrigger(trigger, memory);
+                        var shouldTriggerDeathLink = await triggerCheck;
+
+                        if (shouldTriggerDeathLink)
+                        {
+                            Common.WriteLog($"Triggering death link from trigger: {trigger}", "MonitorDeathLinkTriggers");
+                            SendDeathLink(trigger.ToString());
+                            continue;
+                        }
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Common.WriteLog($"Error monitoring death link triggers: {ex}", "MonitorDeathLinkTriggers");
+                }
+
+                await Task.Delay(10, Token);
+            }
+        }
+
+        private Task<bool> GetMethodForTrigger(DeathLinkTrigger trigger, Memory memory)
+        {
+            return trigger switch
+            {
+                DeathLinkTrigger.VehicleDestroyed => MonitorVehicleDestroyedTrigger(memory),
+                DeathLinkTrigger.MissionFailed => MonitorMissionFailedTrigger(memory),
+                DeathLinkTrigger.Busted => MonitorBustedTrigger(memory),
+                _ => throw new ArgumentOutOfRangeException(nameof(trigger), $"No method defined for trigger {trigger}")
+            };
+        }
+
+        private async Task<bool> MonitorMissionFailedTrigger(Memory memory)
+        {
+            var gameplayManager = memory.Globals?.GameplayManager as MissionManager;
+            var isDeathLinkTriggered = false;
+
+            if (gameplayManager == null)
+            {
+                _previousMission = null;
+                return isDeathLinkTriggered;
+            }
+
+            var currentMission = gameplayManager?.GetCurrentMission();
+            var stageConditions = currentMission?.GetCurrentStage()?.Conditions;
+
+            if (currentMission == null || stageConditions == null || !stageConditions.Any())
+            {
+                _previousMission = null;
+                return isDeathLinkTriggered;
+            }
+
+            var currentMissionModel = new MissionModel
+            {
+                Name = currentMission.Name,
+                IsFailed = stageConditions.Any(c => c.IsViolated)
+            };
+
+            if (currentMissionModel.IsFailed && 
+                (currentMissionModel.Name != _previousMission?.Name || currentMissionModel.IsFailed != _previousMission?.IsFailed)
+            )
+            {
+                isDeathLinkTriggered = true;
+            }
+
+            _previousMission = currentMissionModel;
+            return isDeathLinkTriggered;    
+        }
+        
+        private async Task<bool> MonitorVehicleDestroyedTrigger(Memory memory)
+        {
+            var shouldTriggerDeathLink = false;
+
+            var player = memory.Singletons.CharacterManager?.Player;
+
+            if (player != null)
+            {
+                var playerCar = player.Car;
+                var vehicleDestroyed = false;
+
+                if (playerCar != null && playerCar.Address != 0)
+                {
+                    vehicleDestroyed = playerCar.VehicleDestroyed;
+                }
+
+                if (!_lastPlayerVehicleDestroyed && vehicleDestroyed)
+                {
+                    shouldTriggerDeathLink = true;
+                }
+
+                _lastPlayerVehicleDestroyed = vehicleDestroyed;
+            }
+            else
+            {
+                _lastPlayerVehicleDestroyed = false;
+            }
+
+            return shouldTriggerDeathLink;
+        }
+
+        private async Task<bool> MonitorBustedTrigger(Memory memory)
+        {
+            var shouldTriggerDeathLink = false;
+
+            var hitNRunManager = memory.Singletons.HitNRunManager;
+
+            if (hitNRunManager != null)
+            {
+                if (_lastChaseOn && !hitNRunManager.ChaseOn)
+                {
+                    shouldTriggerDeathLink = _lastTicketTimer != 0;
+                }
+
+                _lastChaseOn = hitNRunManager.ChaseOn;
+                _lastTicketTimer = hitNRunManager.TicketTimer;
+            }
+            else
+            {
+                _lastChaseOn = false;
+                _lastTicketTimer = 0;
+            }
+
+            return shouldTriggerDeathLink;
+        }
+
+        public void SendDeathLink(string cause)
+        {
+            if (ShouldSuppressDeathLinkEvent())
+            {
+                Common.WriteLog("Suppressed death link send.", "SendDeathLink");
+                return;
+            }
+
+            ac.SendMessage($"Death link triggered: {cause}");
+
+            Common.WriteLog($"{cause} detected. Sending death link.", "SendDeathLink");
+            ac.SendDeathLink(cause);
+            _lastDeathLinkEventTime = DateTime.UtcNow;
+        }
+
+
+        public async Task ProcessDeathLinkMessage()
+        {
+            Common.WriteLog("Received DL", "ProcessDeathLinkMessage");
+            var deathLinkSuccessfullyTriggered = false;
+
+            try
+            {
+                if (ShouldSuppressDeathLinkEvent())
+                {
+                    deathLinkSuccessfullyTriggered = false;
+                    Common.WriteLog("Suppressed death link received event..", "ProcessDeathLinkMessage");
+                    return;
+                }
+
+                if (_currentMemory == null || !_currentMemory.InGame())
+                {
+                    deathLinkSuccessfullyTriggered = false;
+                    _isInComingDeathLinkQueued = true;
+                    Common.WriteLog("Waiting for game to be unpaused to apply death link...", "ProcessDeathLinkMessage");
+                    return;
+                }
+
+                _isProcessingIncomingDeathLink = true;
+                _lastDeathLinkEventTime = DateTime.UtcNow;
+
+                // Check if player is in a mission
+                var gameplayManager = _currentMemory.Globals?.GameplayManager as MissionManager;
+                if (gameplayManager != null)
+                {
+                    var currentMission = gameplayManager.GetCurrentMission();
+                    if (currentMission != null && !currentMission.Name.EndsWith("sd") && currentMission.State == SHARMissionClass.MissionStates.InProgress)
+                    {
+                        var currentStage = currentMission.GetCurrentStage();
+
+                        if (currentStage.Conditions != null && currentStage.Conditions.Any())
+                        {
+                            currentStage.Conditions[0].IsViolated = true;
+                            deathLinkSuccessfullyTriggered = true;
+                            Common.WriteLog("Mission failed by death link.", "ProcessDeathLinkMessage");
+                            return;
+                        }
+                    }
+                }
+
+                var player = _currentMemory.Singletons.CharacterManager?.Player;
+                if (player == null)
+                {
+                    Common.WriteLog("Could not find player.", "ProcessDeathLinkMessage");
+                    deathLinkSuccessfullyTriggered = false;
+                    _isInComingDeathLinkQueued = true;
+                    return;
+                }
+
+                //If inside a building...idk I need to figure out what to do here
+                if (_currentMemory.Singletons.InteriorManager.InteriorState == InteriorManager.InteriorStates.Inside)
+                {
+                    _currentMemory.Singletons.CharacterSheetManager.CharacterSheet.Coins -= 50;
+
+                    // Extensions.Dynaload(_currentMemory, "archroom.p3d;doorbells.p3d;doorplates.p3d;");
+                    //     await Task.Delay(100);
+                    //     Extensions.Teleport(_currentMemory, lCoords, 0);
+
+                    deathLinkSuccessfullyTriggered = true;
+                    return;
+                }
+
+                // Check if player is in a car
+                var playerCar = player.Car;
+                if (playerCar != null && playerCar.Address != 0)
+                {
+                    Common.WriteLog("Player car destroyed by death link.", "ProcessDeathLinkMessage");
+
+                    // playerCar.VehicleDestroyed = true;
+                    // playerCar.HitPoints = 0f;
+                    // playerCar.NoDamageTimer = 0f;
+                    // playerCar.AlreadyPlayedExplosion = false;
+
+                    // await Task.Delay(5000).ContinueWith(_ => QueueInstantBust(_currentMemory));  
+                    QueueHitAndRun(_currentMemory);
+                    deathLinkSuccessfullyTriggered = true;
+
+                    return;
+                }
+                else
+                {
+                    //QueueInstantBust(_currentMemory);
+
+                    QueueHitAndRun(_currentMemory);
+                    deathLinkSuccessfullyTriggered = true;
+
+                    Common.WriteLog("Player busted by death link.", "ProcessDeathLinkMessage");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                deathLinkSuccessfullyTriggered = false;
+                Common.WriteLog($"Error in ProcessDeathLinkMessage: {ex.Message}", "ProcessDeathLinkMessage");
+            }
+            finally
+            {
+                if (deathLinkSuccessfullyTriggered)
+                {
+                    await Task.Delay(5000);
+                }
+                
+                _isProcessingIncomingDeathLink = false;
+                Common.WriteLog("Death Link protection flag lifted. Player vulnerable again.", "ProcessDeathLinkMessage");
+            }
+        }
+
+        private void QueueHitAndRun(Memory _currentMemory)
+        {
+            _currentMemory.Singletons.HitNRunManager.CurrHitAndRun = 100f;
+        }
+
+        private void QueueInstantBust(Memory _currentMemory)
+        {
+            _currentMemory.Singletons.HitNRunManager.ChaseOn = true;
+            _currentMemory.Singletons.HitNRunManager.TicketTimer = 1f;
+            _currentMemory.Singletons.HitNRunManager.CopTicketTimeThreshold = 1f;
+            _currentMemory.Singletons.HitNRunManager.CopTicketDistance = float.MaxValue;
+            _currentMemory.Singletons.HitNRunManager.CopTicketDistanceOnFoot = float.MaxValue;
+            _currentMemory.Singletons.HitNRunManager.CurrHitAndRun = 100f;
+        }
+    
+        private bool ShouldSuppressDeathLinkEvent()
+        {
+            return _isProcessingIncomingDeathLink
+                || DateTime.UtcNow - _lastDeathLinkEventTime < TimeSpan.FromSeconds(5);
         }
     }
 }
