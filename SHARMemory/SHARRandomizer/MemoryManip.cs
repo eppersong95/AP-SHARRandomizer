@@ -2230,7 +2230,7 @@ namespace SHARRandomizer
             Extensions.SetString(language, "APLog", "Disconnected.");
         }
 
-                private async Task MonitorQueuedDeathLinks(Memory memory)
+        private async Task MonitorQueuedDeathLinks(Memory memory)
         {
             while (!memory.Process.HasExited)
             {
