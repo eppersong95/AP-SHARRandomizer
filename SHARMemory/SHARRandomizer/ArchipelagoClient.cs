@@ -257,7 +257,7 @@ namespace SHARRandomizer
                     levelLock = Convert.ToBoolean(login.SlotData["Lock_Levels"]);
                     bonusRequired = Convert.ToBoolean(login.SlotData["Bonus_Mission_Required"]);
                     raceRequired = Convert.ToBoolean(login.SlotData["Race_Mission_Required"]);
-                    deathLink = true;//Convert.ToBoolean(login.SlotData["death_link"]);
+                    deathLink = Convert.ToBoolean(login.SlotData["death_link"]);
 
                     if (deathLink)
                     {
